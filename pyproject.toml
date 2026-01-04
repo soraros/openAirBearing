@@ -8,20 +8,20 @@ dynamic = ["version"]
 description = "A Python package for externally pressurized air bearing analysis."
 readme = "README.md"
 license = { file = "LICENSE" }
-authors = [
-    { name = "Mikael Miettinen", email = "mikael.miettinen@iki.fi" },
-]
-requires-python = ">=3.10"
+authors = [{ name = "Mikael Miettinen", email = "mikael.miettinen@iki.fi" }]
+requires-python = ">=3.13"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "dash>=2.18.2,<3.0.0",
-    "numpy>=2.2.3,<3.0.0",
-    "plotly>=6.0.0,<7.0.0",
-    "scipy>=1.7.0,<2.0.0",
+    "dash>=3.3.0",
+    "ipykernel>=7.1.0",
+    "matplotlib>=3.10.8",
+    "numpy>=2.4.0,<3.0.0",
+    "plotly>=6.5.0,<7.0.0",
+    "scipy>=1.16.3,<2.0.0",
 ]
 
 [project.urls]
@@ -36,7 +36,7 @@ openairbearing = "openairbearing.app.app:main"
 exclude = ["examples*", "tests*"]
 
 [tool.setuptools.dynamic]
-version = {attr = "openairbearing.__version__"}
+version = { attr = "openairbearing.__version__" }
 
 [tool.setuptools.package-data]
 openairbearing = ["assets/style.css", "assets/favicon.ico"]
