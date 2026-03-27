@@ -157,6 +157,9 @@ def get_Qsc(bearing):
 
 
 def round_to_sig_dig(number, digits):
+    """
+    Rounds number to the specified number of significant digits using NumPy.
+    """
     return np.round(number, -int(np.floor(np.log10(np.abs(number)))) + (digits - 1))
 
 

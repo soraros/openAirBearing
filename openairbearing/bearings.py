@@ -1,14 +1,21 @@
-import numpy as np
+from abc import abstractmethod
 from dataclasses import dataclass, field
+from enum import Enum
+from typing import ClassVar, Final, Protocol
 
-from openairbearing.utils import get_area, get_geom, get_kappa, get_beta
+import numpy as np
+from numpy.typing import NDArray
+
+from .utils import get_area, get_beta, get_geom, get_kappa
+
+type F64 = NDArray[np.float64]
 
 
 @dataclass
 class BaseBearing:
     """Base class for all bearing types."""
 
-    pa: float = 101325
+    pa: Final[float] = 101325.0  # atmospheric pressure
     pc: float = pa
     ps: float = 0.6e6 + pa
 
@@ -24,8 +31,8 @@ class BaseBearing:
     xc: float = 0
     ya: float = 0
     nh: int = 20
-    nx: int = 30
-    ny: int = 1
+    nx: int = 30  # number of points in x direction
+    ny: int = 1  # number of points in y direction, it's 1 for 1D bearings
 
     Psi: float = 0
 
@@ -36,40 +43,152 @@ class BaseBearing:
     block_x: float = 25.2e-3 / 2
     block_w: float = 1e-3
 
-    Qsc: float = 3  # L/min
-    psc: float = 0.6e6 + pa
+    Qsc: float = 3  # L/min  this is the standard flow rate
+    psc: float = 0.6e6 + pa  # standard supply pressure
 
     # clearance and eccentricity for journal bearings
-    c: float = field(init=False)
-    e: float = field(init=False)
-    theta: np.ndarray = field(init=False, default=None)
-    clearance: np.ndarray = field(init=False, default=None)
+    c: float = field(init=False)  # clearance
+    e: F64 = field(init=False)  # eccentricity array
+    theta: F64 | None = field(init=False, default=None)
+    clearance: F64 | None = field(init=False, default=None)
 
-    x: np.ndarray = field(init=False)
-    dx: np.ndarray = field(init=False)
-    y: np.ndarray = field(init=False)
-    dy: np.ndarray = field(init=False)
+    x: F64 = field(init=False)
+    dx: F64 = field(init=False)
+    y: F64 = field(init=False)
+    dy: F64 = field(init=False)
 
-    ha: np.ndarray = field(init=False)
+    ha: F64 = field(init=False)
     A: float = field(init=False)
     kappa: float = field(init=False)
     beta: float = field(init=False)
-    geom: np.ndarray = field(init=False)
+    geom: F64 = field(init=False)
 
     case: str = "base"
     type: str = "bearing"
     csys: str = "cartesian"
 
     def __post_init__(self):
-        self.ha = np.linspace(self.ha_min, self.ha_max, self.nh).T
+        self.ha = np.linspace(self.ha_min, self.ha_max, self.nh)
         self.x = np.linspace(self.xc, self.xa, self.nx)
         self.y = np.linspace(0, self.ya, self.ny)
         self.dx = np.gradient(self.x)
-        self.dy = 1 if self.ny == 1 else np.gradient(self.y)
+        self.dy = np.array(1) if self.ny == 1 else np.gradient(self.y)
         self.A = get_area(self)
         self.geom = get_geom(self)
         self.kappa = get_kappa(self)
         self.beta = get_beta(self)
+
+
+class BearingType(Enum):
+    BEARING = "bearing"
+    SEAL = "seal"
+
+
+class CoordinateSystem(Enum):
+    CARTESIAN = "cartesian"
+    POLAR = "polar"
+
+
+class BearingT(Protocol):
+    type: ClassVar[BearingType]
+    coord_system: ClassVar[CoordinateSystem]
+
+    @property
+    @abstractmethod
+    def area(self) -> float: ...
+
+
+type Bearing = (
+    CircularBearing
+    | AnnularBearing
+    | InfiniteLinearBearing
+    | RectangularBearing
+    | JournalBearing
+)
+
+type Bearing_ = Circular | Annular
+
+
+def get_area_(bearing: Bearing) -> float:
+    b = bearing
+    match bearing:
+        case CircularBearing():
+            return 0
+
+    return None
+
+    match b.case:
+        case "circular":
+            A = np.pi * b.xa**2
+        case "annular":
+            A = np.pi * (b.xa**2 - b.xc**2)
+        case "infinite":
+            A = b.xa
+        case "rectangular":
+            A = b.xa * b.ya
+        case "journal":
+            A = 2 * np.pi * b.xa * b.ya
+        case _:
+            raise ValueError(f"Unknown case: {b.case}")
+
+    return A
+
+
+@dataclass
+class Circular(BearingT):
+    xa: float
+    type = BearingType.BEARING
+    coord_system = CoordinateSystem.POLAR
+
+    @property
+    def area(self) -> float:
+        return np.pi * self.xa**2
+
+    @property
+    def geometry(self) -> float:
+        return self.area
+
+    def beta(self) -> float:
+        return 0.0
+
+
+@dataclass
+class Annular:
+    xa: float
+    xc: float
+
+    @property
+    def area(self) -> float:
+        return np.pi * (self.xa**2 - self.xc**2)
+
+
+@dataclass
+class InfiniteLinear:
+    xa: float
+
+    @property
+    def area(self) -> float:
+        return self.xa
+
+
+@dataclass
+class Rectangular:
+    xa: float
+    ya: float
+
+    @property
+    def area(self) -> float:
+        return self.xa * self.ya
+
+
+@dataclass
+class Journal:
+    xa: float
+    ya: float
+
+    @property
+    def area(self) -> float:
+        return 2 * np.pi * self.xa * self.ya
 
 
 @dataclass
@@ -78,7 +197,8 @@ class CircularBearing(BaseBearing):
 
     case: str = "circular"
     type: str = "bearing"
-    csys: str = "polar"
+    csys: str = "polar"  # csys is short for coordinate system
+    # ny takes the default value of 1 from BaseBearing, meaning 1D formulation
 
     xc: float = 1e-6
     xa: float = 37e-3 / 2
@@ -96,6 +216,7 @@ class AnnularBearing(BaseBearing):
     case: str = "annular"
     type: str = "seal"
     csys: str = "polar"
+    # ny takes the default value of 1 from BaseBearing, meaning 1D formulation
 
     xa: float = 58e-3 / 2
     xc: float = 25e-3 / 2
@@ -160,10 +281,10 @@ class JournalBearing(BaseBearing):
     type: str = "seal"
     csys: str = "cartesian"
 
-    xa: float = 50.02e-3 / 2  # radius
+    xa: float = 50.02e-3 / 2  # radius, the minimum radius of the bearing
     ya: float = 89e-3  # length
-    nx: int = 80
-    ny: int = 50
+    nx: int = 80  # circumferential points
+    ny: int = 50  # axial points
     hp: float = 3e-3
 
     c = 40e-6  # clearance (journal radius - shaft radius)

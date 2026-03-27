@@ -1,14 +1,17 @@
-import pytest
 import numpy as np
+import pytest
 
-from openairbearing.bearings import *
+from openairbearing.bearings import (
+    AnnularBearing,
+    CircularBearing,
+    InfiniteLinearBearing,
+)
 from openairbearing.solvers import (
-    solve_bearing,
-    get_pressure_analytic_circular,
     get_pressure_analytic_annular,
+    get_pressure_analytic_circular,
     get_pressure_analytic_infinite,
     get_pressure_numeric,
-    get_pressure_2d_numeric,
+    solve_bearing,
 )
 
 
