@@ -11,7 +11,7 @@ from openairbearing.utils import (
 )
 
 
-def solve_bearing(bearing, soltype: bool) -> Result:
+def solve_bearing(bearing, soltype: str) -> Result:
   match soltype:
     case "analytic":
       name = "analytic"

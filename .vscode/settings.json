@@ -3,5 +3,7 @@
     "editor.defaultFormatter": "charliermarsh.ruff",
     "editor.formatOnSave": true
   },
-  "editor.tabSize": 2
+  "editor.tabSize": 2,
+  "python.analysis.typeCheckingMode": "standard",
+  "workbench.browser.openLocalhostLinks": true
 }
