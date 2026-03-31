@@ -38,8 +38,13 @@ path = "openairbearing/__init__.py"
 packages = ["openairbearing"]
 
 [tool.ruff]
+indent-width = 2
 line-length = 88
 target-version = "py313"
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
+ignore = ["E111", "E114"]
+
+[tool.ruff.format]
+indent-style = "space"

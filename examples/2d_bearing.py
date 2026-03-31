@@ -1,33 +1,33 @@
-import numpy as np
-import openairbearing as ab
 import matplotlib.pyplot as plt
+import numpy as np
+
+import openairbearing as ab
 
 if __name__ == "__main__":
+  # initialize circular bearing with parameters
+  bearing = ab.AnnularBearing(
+    xa=40e-3,
+    ya=2 * np.pi,
+    pc=0.3e6,
+    nx=100,
+    ny=120,
+  )
+  # plot bearing shape
+  # figure = ab.plot_bearing_shape(bearing)
+  # figure.show()
+  # solve with analytic and numeric methods
 
-    # initialize circular bearing with parameters
-    bearing = ab.AnnularBearing(
-        xa=40e-3,
-        ya=2 * np.pi,
-        pc=0.3e6,
-        nx=100,
-        ny=120,
-    )
-    # plot bearing shape
-    # figure = ab.plot_bearing_shape(bearing)
-    # figure.show()
-    # solve with analytic and numeric methods
+  result = [
+    ab.solve_bearing(bearing, "analytic"),
+    ab.solve_bearing(bearing, "numeric2d"),
+  ]
+  plt.contourf(bearing.x * 1e3, bearing.y * 1e3, result[1].p[:, :, 3] * 1e-6)
+  plt.colorbar()
+  plt.show()
 
-    result = [
-        ab.solve_bearing(bearing, "analytic"),
-        ab.solve_bearing(bearing, "numeric2d"),
-    ]
-    plt.contourf(bearing.x * 1e3, bearing.y * 1e3, result[1].p[:, :, 3] * 1e-6)
-    plt.colorbar()
-    plt.show()
-
-    # plot results
-    figure = ab.plot_key_results(bearing, result)
-    figure.show()
+  # plot results
+  figure = ab.plot_key_results(bearing, result)
+  figure.show()
 
 
 # def get_pressure_2d_numeric(bearing):

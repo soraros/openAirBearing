@@ -1,16 +1,3 @@
-import pytest
-import numpy as np
-from openairbearing.plots import plot_key_results, plot_bearing_shape
-from openairbearing.bearings import (
-    BaseBearing,
-    CircularBearing,
-    AnnularBearing,
-    InfiniteLinearBearing,
-    RectangularBearing,
-)
-from plotly.graph_objects import Figure
-
-
 # def test_plot_key_results():
 #     """Test the plot_key_results function."""
 #     # Mock a bearing object

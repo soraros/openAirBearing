@@ -1,20 +1,21 @@
 import pytest
+
 from openairbearing.app.callbacks import get_bearing
 from openairbearing.bearings import (
-    CircularBearing,
-    AnnularBearing,
-    InfiniteLinearBearing,
-    RectangularBearing,
+  AnnularBearing,
+  CircularBearing,
+  InfiniteLinearBearing,
+  RectangularBearing,
 )
 
 
 def test_get_bearing():
-    assert get_bearing("circular") == CircularBearing
-    assert get_bearing("annular") == AnnularBearing
-    assert get_bearing("infinite") == InfiniteLinearBearing
-    assert get_bearing("rectangular") == RectangularBearing
-    with pytest.raises(TypeError, match="no default bearing defined"):
-        get_bearing("unknown")
+  assert get_bearing("circular") == CircularBearing
+  assert get_bearing("annular") == AnnularBearing
+  assert get_bearing("infinite") == InfiniteLinearBearing
+  assert get_bearing("rectangular") == RectangularBearing
+  with pytest.raises(TypeError, match="no default bearing defined"):
+    get_bearing("unknown")
 
 
 # psutil multiprocess selenium "dash[testing]"

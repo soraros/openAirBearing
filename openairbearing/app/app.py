@@ -1,7 +1,7 @@
 import dash
 
-from openairbearing.app.layouts import create_layout
 from openairbearing.app.callbacks import register_callbacks
+from openairbearing.app.layouts import create_layout
 from openairbearing.bearings import CircularBearing
 from openairbearing.solvers import solve_bearing
 
@@ -13,13 +13,11 @@ bearing = default_bearing
 result = solve_bearing(bearing, "analytic")
 
 app = dash.Dash(
-    __name__,
-    meta_tags=[
-        {"name": "viewport", "content": "width=device-width, initial-scale=1.0"}
-    ],
-    title="OpenAirBearing",
-    update_title="Loading...",
-    assets_folder="assets",
+  __name__,
+  meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1.0"}],
+  title="OpenAirBearing",
+  update_title="Loading...",
+  assets_folder="assets",
 )
 
 # Update app.layout before app.run_server(debug=True):
@@ -51,8 +49,8 @@ app.index_string = """
 
 
 def main():
-    app.run(debug=True)
+  app.run(debug=True)
 
 
 if __name__ == "__main__":
-    main()
+  main()
