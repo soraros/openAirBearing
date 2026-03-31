@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=42", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "openairbearing"
@@ -8,20 +8,20 @@ dynamic = ["version"]
 description = "A Python package for externally pressurized air bearing analysis."
 readme = "README.md"
 license = { file = "LICENSE" }
-authors = [
-    { name = "Mikael Miettinen", email = "mikael.miettinen@iki.fi" },
-]
-requires-python = ">=3.10"
+authors = [{ name = "Mikael Miettinen", email = "mikael.miettinen@iki.fi" }]
+requires-python = ">=3.13"
 classifiers = [
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "dash>=2.18.2,<3.0.0",
-    "numpy>=2.2.3,<3.0.0",
-    "plotly>=6.0.0,<7.0.0",
-    "scipy>=1.7.0,<2.0.0",
+    "dash>=4.1.0",
+    "numpy>=2.4.4",
+    "plotly>=6.6.0",
+    "pytest>=9.0.2",
+    "scipy>=1.17.1",
 ]
 
 [project.urls]
@@ -31,12 +31,15 @@ Homepage = "https://github.com/Aalto-Arotor/openAirBearing"
 [project.scripts]
 openairbearing = "openairbearing.app.app:main"
 
-# --- Setuptools specific configuration ---
-[tool.setuptools.packages.find]
-exclude = ["examples*", "tests*"]
+[tool.hatch.version]
+path = "openairbearing/__init__.py"
 
-[tool.setuptools.dynamic]
-version = {attr = "openairbearing.__version__"}
+[tool.hatch.build.targets.wheel]
+packages = ["openairbearing"]
 
-[tool.setuptools.package-data]
-openairbearing = ["assets/style.css", "assets/favicon.ico"]
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]

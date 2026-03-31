@@ -1,4 +1,4 @@
-from dash.dependencies import Input, Output
+from dash import Input, Output
 import dash
 
 
@@ -177,7 +177,6 @@ def register_callbacks(app):
             return (
                 *[empty_figure() for _ in range(3)],
                 *[empty_figure() for _ in range(6)],
-                dash.no_update,
                 dash.no_update,
                 dash.no_update,
             )
