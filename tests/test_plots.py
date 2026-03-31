@@ -1,72 +1,163 @@
-# def test_plot_key_results():
-#     """Test the plot_key_results function."""
-#     # Mock a bearing object
-#     bearings = [
-#         CircularBearing(),
-#         AnnularBearing(),
-#         InfiniteLinearBearing(),
-#         RectangularBearing(),
-#     ]
-#     for bearing in bearings:
+import numpy as np
+import plotly.graph_objects as go
+import pytest
 
-#         # Mock results
-#         class MockResult:
-#             def __init__(self, name):
-#                 self.name = name
-#                 self.w = np.random.rand(bearing.nh)
-#                 self.k = np.random.rand(bearing.nh)
-#                 self.qs = np.random.rand(bearing.nh)
-#                 self.qc = np.random.rand(bearing.nh)
-#                 self.qa = np.random.rand(bearing.nh)
-#                 if bearing.case == "rectangular":
-#                     self.p = np.random.rand(bearing.ny, bearing.nx, bearing.nh)
-#                 else:
-#                     self.p = np.random.rand(bearing.nx, bearing.nh)
-
-#         results = [MockResult("Analytic"), MockResult("Numeric")]
-
-#         # Call the function
-#         fig = plot_key_results(bearing, results)
-
-#         # Assertions
-#         assert isinstance(fig, Figure), "The output should be a Plotly Figure."
-#         assert len(fig.data) > 0, "The figure should contain traces."
-#         assert len(fig.layout.annotations) > 0, "The figure should have subplot titles."
+from openairbearing.bearings import (
+  AnnularBearing,
+  CircularBearing,
+  InfiniteLinearBearing,
+  RectangularBearing,
+)
+from openairbearing.plots import (
+  empty_figure,
+  plot_ambient_flow_rate,
+  plot_bearing_shape,
+  plot_chamber_flow_rate,
+  plot_key_results,
+  plot_load_capacity,
+  plot_pressure_distribution,
+  plot_stiffness,
+  plot_supply_flow_rate,
+  plot_xy_shape,
+  plot_xz_shape,
+)
+from openairbearing.solvers import solve_bearing
 
 
-# def test_plot_key_results_no_results():
-#     """Test plot_key_results with no results."""
-#     # Mock a bearing object
-#     bearing = CircularBearing()
-
-#     # Call the function with no results
-#     fig = plot_key_results(bearing, [])
-
-#     # Assertions
-#     assert isinstance(fig, Figure), "The output should be a Plotly Figure."
-#     assert len(fig.data) == 0, "The figure should contain no traces."
-#     assert (
-#         fig.layout.title.text == "No suitable solver selected"
-#     ), "The figure should display a message when no results are provided."
+# ── Helpers ───────────────────────────────────────────────────────────
 
 
-# def test_plot_bearing_shape():
-#     """Test the plot_bearing_shape function."""
-#     # Mock a bearing object
-#     bearings = [
-#         CircularBearing(),
-#         AnnularBearing(),
-#         InfiniteLinearBearing(),
-#         RectangularBearing(),
-#     ]
-#     for bearing in bearings:
-#         bearing.ha = np.linspace(bearing.ha_min, bearing.ha_max, bearing.nx)
-#         bearing.x = np.linspace(0, bearing.xa, bearing.nx)
+def _solve(bearing, soltype="analytic"):
+  return solve_bearing(bearing, soltype)
 
-#         # Call the function
-#         fig = plot_bearing_shape(bearing)
 
-#         # Assertions
-#         assert isinstance(fig, Figure), "The output should be a Plotly Figure."
-#         assert len(fig.data) > 0, "The figure should contain traces."
-#         assert len(fig.layout.annotations) > 0, "The figure should have subplot titles."
+# ── Individual plot functions ─────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+  "BearingCls", [CircularBearing, AnnularBearing, InfiniteLinearBearing]
+)
+def test_plot_load_capacity_returns_figure(BearingCls):
+  """plot_load_capacity returns a Plotly Figure with traces."""
+  b = BearingCls()
+  r = _solve(b)
+  fig = plot_load_capacity(b, [r])
+  assert isinstance(fig, go.Figure)
+  assert len(fig.data) > 0
+
+
+@pytest.mark.parametrize(
+  "BearingCls", [CircularBearing, AnnularBearing, InfiniteLinearBearing]
+)
+def test_plot_stiffness_returns_figure(BearingCls):
+  b = BearingCls()
+  r = _solve(b)
+  fig = plot_stiffness(b, [r])
+  assert isinstance(fig, go.Figure)
+  assert len(fig.data) > 0
+
+
+@pytest.mark.parametrize(
+  "BearingCls", [CircularBearing, AnnularBearing, InfiniteLinearBearing]
+)
+def test_plot_pressure_distribution_1d(BearingCls):
+  """1D pressure distribution returns figure with curves."""
+  b = BearingCls()
+  r = _solve(b)
+  fig = plot_pressure_distribution(b, [r])
+  assert isinstance(fig, go.Figure)
+  assert len(fig.data) > 0
+
+
+def test_plot_pressure_distribution_2d():
+  """2D pressure produces contour plot."""
+  b = RectangularBearing(nx=10, ny=8, nh=3)
+  r = solve_bearing(b, "numeric2d")
+  fig = plot_pressure_distribution(b, [r])
+  assert isinstance(fig, go.Figure)
+  assert len(fig.data) > 0
+
+
+@pytest.mark.parametrize(
+  "BearingCls", [CircularBearing, AnnularBearing, InfiniteLinearBearing]
+)
+def test_plot_flow_rates_return_figures(BearingCls):
+  b = BearingCls()
+  r = _solve(b)
+  for plot_fn in [plot_supply_flow_rate, plot_ambient_flow_rate]:
+    fig = plot_fn(b, [r])
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) > 0
+
+
+def test_plot_chamber_flow_rate_seal():
+  """Chamber flow plot works for seal-type (annular)."""
+  b = AnnularBearing()
+  r = _solve(b)
+  fig = plot_chamber_flow_rate(b, [r])
+  assert isinstance(fig, go.Figure)
+  assert len(fig.data) > 0
+
+
+# ── Composite plot functions ──────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+  "BearingCls, expected_count",
+  [
+    (CircularBearing, 5),  # bearing type: load, stiffness, pressure, qs, qa
+    (AnnularBearing, 6),  # seal type: +qc
+    (InfiniteLinearBearing, 6),
+  ],
+)
+def test_plot_key_results_count(BearingCls, expected_count):
+  """plot_key_results returns correct number of figures based on type."""
+  b = BearingCls()
+  r = _solve(b)
+  figs = plot_key_results(b, [r])
+  assert len(figs) == expected_count
+  assert all(isinstance(f, go.Figure) for f in figs)
+
+
+# ── Shape plots ───────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+  "BearingCls",
+  [CircularBearing, AnnularBearing, InfiniteLinearBearing, RectangularBearing],
+)
+def test_plot_xy_shape_returns_figure(BearingCls):
+  b = BearingCls()
+  fig = plot_xy_shape(b)
+  assert isinstance(fig, go.Figure)
+  assert len(fig.data) > 0
+
+
+@pytest.mark.parametrize(
+  "BearingCls",
+  [CircularBearing, AnnularBearing, InfiniteLinearBearing, RectangularBearing],
+)
+def test_plot_xz_shape_returns_figure(BearingCls):
+  b = BearingCls()
+  fig = plot_xz_shape(b)
+  assert isinstance(fig, go.Figure)
+
+
+@pytest.mark.parametrize(
+  "BearingCls",
+  [CircularBearing, AnnularBearing, InfiniteLinearBearing, RectangularBearing],
+)
+def test_plot_bearing_shape_returns_two(BearingCls):
+  """plot_bearing_shape returns [xy, xz]."""
+  b = BearingCls()
+  figs = plot_bearing_shape(b)
+  assert len(figs) == 2
+  assert all(isinstance(f, go.Figure) for f in figs)
+
+
+# ── Misc ──────────────────────────────────────────────────────────────
+
+
+def test_empty_figure():
+  fig = empty_figure()
+  assert isinstance(fig, go.Figure)
