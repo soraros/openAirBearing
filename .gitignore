@@ -1,8 +1,16 @@
+# Build
+*.egg-info/
+__pycache__/
+dist/
+
+# Environment
+.venv/
+uv.lock
+
+# Caches
+.ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
+
+# OS
 .DS_Store
-.venv
-/__pycache__
-/openairbearing/__pycache__
-/openairbearing/app/__pycache__
-/tests/__pycache__
-/openairbearing.egg-info
-/dist
