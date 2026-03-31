@@ -25,7 +25,7 @@ Never commit without explicit user approval.
 
 ## Code Style
 
-4-space indent, `ruff` for formatting. Type hints on public API.
+2-space indent, `ruff` for formatting. Type hints on everything.
 
 Short domain names (`ha`, `pa`, `mu`, `kappa`). Name for what it *is*: `load_capacity` not `compute_load_capacity`. One-line docstrings; expand only for non-obvious math/semantics.
 
