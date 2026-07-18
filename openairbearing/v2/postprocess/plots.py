@@ -7,7 +7,7 @@ sequence (overlaid curves, colored per solution method).
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 import numpy as np
 import plotly.graph_objects as go
@@ -19,7 +19,7 @@ from openairbearing.v2.geometry.pads import (
   LinearPad,
   RectangularPad,
 )
-from openairbearing.v2.primitives.types import SampleScalar
+from openairbearing.v2.primitives.types import F64, SampleScalar
 from openairbearing.v2.problem import BearingProblem, BearingSpec, build_problem
 from openairbearing.v2.solvers.solution import Solution
 
@@ -78,6 +78,10 @@ def _as_list(solutions: Solution | Sequence[Solution]) -> list[Solution]:
   return out
 
 
+def _as_problem(spec: BearingSpec | BearingProblem) -> BearingProblem:
+  return build_problem(spec) if isinstance(spec, BearingSpec) else spec
+
+
 def _color(solution: Solution) -> str:
   return SOLVER_COLORS.get(solution.method, "purple")
 
@@ -92,85 +96,104 @@ def _x_label(problem: BearingProblem) -> str:
   return "r (mm)" if problem.polar else "x (mm)"
 
 
-def _samples_um(solution: Solution) -> SampleScalar:
-  return solution.samples * 1e6
+def _x_values(problem: BearingProblem) -> SampleScalar:
+  """X-axis plot values: θ in rad for journal pads, else mm."""
+  return problem.x if problem.journal else problem.x * 1e3
 
 
-def _marker_sizes(solution: Solution) -> list[int]:
-  return [8 if i == solution.peak_index else 0 for i in range(solution.problem.n_samples)]
+def _contour(z: F64, x: F64, y: F64, *, zmax: float, name: str, cbtitle: str) -> go.Contour:
+  return go.Contour(
+    z=z,
+    x=x,
+    y=y,
+    colorscale="Viridis",
+    zmin=0,
+    zmax=zmax,
+    contours={
+      "coloring": "heatmap",
+      "showlabels": True,
+      "labelfont": {"size": 10, "color": "white"},
+    },
+    colorbar={"title": cbtitle, "thickness": 15},
+    name=name,
+  )
 
 
-def _curve(solution: Solution, x: SampleScalar, y: SampleScalar) -> go.Scatter:
-  color = _color(solution)
+def _shape_trace(
+  x: F64, y: F64, *, fillcolor: str = "lightgrey", legend: bool = False
+) -> go.Scatter:
   return go.Scatter(
     x=x,
     y=y,
-    name=solution.method,
-    mode="lines+markers",
-    marker={"color": color, "size": _marker_sizes(solution), "symbol": "circle"},
-    line={"color": color},
+    fill="toself",
+    fillcolor=fillcolor,
+    mode="lines",
+    line={"color": "black"},
+    name="Shape",
+    showlegend=legend,
   )
 
 
 # ── Performance curves ────────────────────────────────────────────────────────
 
 
-def plot_load_capacity(solutions: Solution | Sequence[Solution]) -> go.Figure:
-  """Load capacity over the sample sweep."""
-  fig = go.Figure()
-  for sol in _as_list(solutions):
-    fig.add_trace(_curve(sol, _samples_um(sol), sol.load))
-  problem = _as_list(solutions)[0].problem
-  fig.update_xaxes(
-    title_text=_sample_label(problem), range=[0, problem.samples[-1] * 1e6], **AXIS_STYLE
-  )
-  fig.update_yaxes(title_text="w (N)", **AXIS_STYLE)
-  fig.update_layout(title="Load Capacity", **FIG_LAYOUT)
-  return fig
-
-
-def plot_stiffness(solutions: Solution | Sequence[Solution]) -> go.Figure:
-  """Static stiffness over the sample sweep."""
-  fig = go.Figure()
-  for sol in _as_list(solutions):
-    fig.add_trace(_curve(sol, _samples_um(sol), sol.stiffness * 1e-6))
-  problem = _as_list(solutions)[0].problem
-  fig.update_xaxes(
-    title_text=_sample_label(problem), range=[0, problem.samples[-1] * 1e6], **AXIS_STYLE
-  )
-  fig.update_yaxes(title_text="k (N/μm)", **AXIS_STYLE)
-  fig.update_layout(title="Static stiffness", **FIG_LAYOUT)
-  return fig
-
-
-def plot_supply_flow_rate(solutions: Solution | Sequence[Solution]) -> go.Figure:
-  """Supply flow rate over the sample sweep."""
-  return _flow_figure(solutions, "q_supply", "q<sub>s</sub> (L/min)", "Supply flow")
-
-
-def plot_ambient_flow_rate(solutions: Solution | Sequence[Solution]) -> go.Figure:
-  """Ambient-edge flow rate over the sample sweep."""
-  return _flow_figure(solutions, "q_ambient", "q<sub>a</sub> (L/min)", "Ambient flow")
-
-
-def plot_chamber_flow_rate(solutions: Solution | Sequence[Solution]) -> go.Figure:
-  """Chamber-edge flow rate over the sample sweep."""
-  return _flow_figure(solutions, "q_chamber", "q<sub>c</sub> (L/min)", "Chamber flow")
-
-
-def _flow_figure(
-  solutions: Solution | Sequence[Solution], attr: str, y_label: str, title: str
+def _curve_figure(
+  solutions: Solution | Sequence[Solution],
+  y: Callable[[Solution], SampleScalar],
+  y_label: str,
+  title: str,
 ) -> go.Figure:
+  """One overlaid curve figure per solution over the sample sweep."""
+  sols = _as_list(solutions)
   fig = go.Figure()
-  for sol in _as_list(solutions):
-    fig.add_trace(_curve(sol, _samples_um(sol), getattr(sol, attr)))
-  problem = _as_list(solutions)[0].problem
+  for sol in sols:
+    color = _color(sol)
+    fig.add_trace(
+      go.Scatter(
+        x=sol.samples * 1e6,
+        y=y(sol),
+        name=sol.method,
+        mode="lines+markers",
+        marker={
+          "color": color,
+          "size": [8 if i == sol.peak_index else 0 for i in range(sol.problem.n_samples)],
+          "symbol": "circle",
+        },
+        line={"color": color},
+      )
+    )
+  problem = sols[0].problem
   fig.update_xaxes(
     title_text=_sample_label(problem), range=[0, problem.samples[-1] * 1e6], **AXIS_STYLE
   )
   fig.update_yaxes(title_text=y_label, **AXIS_STYLE)
   fig.update_layout(title=title, **FIG_LAYOUT)
   return fig
+
+
+def plot_load_capacity(solutions: Solution | Sequence[Solution]) -> go.Figure:
+  """Load capacity over the sample sweep."""
+  return _curve_figure(solutions, lambda s: s.load, "w (N)", "Load Capacity")
+
+
+def plot_stiffness(solutions: Solution | Sequence[Solution]) -> go.Figure:
+  """Static stiffness over the sample sweep."""
+  return _curve_figure(solutions, lambda s: s.stiffness * 1e-6, "k (N/μm)", "Static stiffness")
+
+
+def plot_supply_flow_rate(solutions: Solution | Sequence[Solution]) -> go.Figure:
+  """Supply flow rate over the sample sweep."""
+  return _curve_figure(solutions, lambda s: s.q_supply, "q<sub>s</sub> (L/min)", "Supply flow")
+
+
+def plot_ambient_flow_rate(solutions: Solution | Sequence[Solution]) -> go.Figure:
+  """Ambient-edge flow rate over the sample sweep."""
+  return _curve_figure(solutions, lambda s: s.q_ambient, "q<sub>a</sub> (L/min)", "Ambient flow")
+
+
+def plot_chamber_flow_rate(solutions: Solution | Sequence[Solution]) -> go.Figure:
+  """Chamber-edge flow rate over the sample sweep."""
+  return _curve_figure(solutions, lambda s: s.q_chamber, "q<sub>c</sub> (L/min)", "Chamber flow")
 
 
 def plot_key_results(solutions: Solution | Sequence[Solution]) -> tuple[go.Figure, ...]:
@@ -210,9 +233,7 @@ def _pressure_curves_1d(fig: go.Figure, sol: Solution) -> None:
   problem = sol.problem
   color = _color(sol)
   pa = problem.state.p_ambient
-  x = problem.x * 1e3
-  if problem.journal:
-    x = problem.x
+  x = _x_values(problem)
   fig.add_trace(
     go.Scatter(
       x=[None],
@@ -227,11 +248,10 @@ def _pressure_curves_1d(fig: go.Figure, sol: Solution) -> None:
   label_at = np.round(np.linspace(problem.x.size, 0, 5)[1:-1]).astype(int)
   for k, t_loc in zip(indices, label_at, strict=True):
     sample = problem.samples[k]
-    pressures = (sol.p[k] - pa) * 1e-6
     fig.add_trace(
       go.Scatter(
         x=x,
-        y=pressures,
+        y=(sol.p[k] - pa) * 1e-6,
         mode="lines+text",
         textposition="top center",
         text=[f"{sample * 1e6:.2f} μm" if i == t_loc else None for i in range(x.size)],
@@ -247,26 +267,18 @@ def _pressure_curves_1d(fig: go.Figure, sol: Solution) -> None:
 
 def _pressure_contour_2d(fig: go.Figure, sol: Solution, *, slider: bool) -> None:
   problem = sol.problem
-  pa = problem.state.p_ambient
   k0 = sol.peak_index
-  pressures = (sol.p - pa) * 1e-6
-  x = problem.x if problem.journal else problem.x * 1e3
+  pressures = (sol.p - problem.state.p_ambient) * 1e-6
+  x = _x_values(problem)
   y = problem.y * 1e3
   fig.add_trace(
-    go.Contour(
-      z=pressures[k0].T,
-      x=x,
-      y=y,
-      colorscale="Viridis",
-      zmin=0,
+    _contour(
+      pressures[k0].T,
+      x,
+      y,
       zmax=float(np.max(pressures)),
-      contours={
-        "coloring": "heatmap",
-        "showlabels": True,
-        "labelfont": {"size": 10, "color": "white"},
-      },
-      colorbar={"title": "p (MPa)", "thickness": 15},
       name=sol.method,
+      cbtitle="p (MPa)",
     )
   )
   fig.update_xaxes(title_text=_x_label(problem), **AXIS_STYLE)
@@ -297,92 +309,49 @@ def _pressure_contour_2d(fig: go.Figure, sol: Solution, *, slider: bool) -> None
 
 def plot_pad_xy(spec: BearingSpec | BearingProblem) -> go.Figure:
   """Pad outline in the XY plane."""
-  problem = build_problem(spec) if isinstance(spec, BearingSpec) else spec
+  problem = _as_problem(spec)
   pad = problem.pad
   fig = go.Figure()
   theta = np.linspace(0.0, 2.0 * np.pi, 100)
   if isinstance(pad, (CircularPad, AnnularPad)):
     fig.add_trace(
-      go.Scatter(
-        x=pad.r * np.cos(theta) * 1e3,
-        y=pad.r * np.sin(theta) * 1e3,
-        fill="toself",
-        fillcolor="lightgrey",
-        line={"color": "black"},
-        name="Shape",
-        showlegend=True,
-      )
+      _shape_trace(pad.r * np.cos(theta) * 1e3, pad.r * np.sin(theta) * 1e3, legend=True)
     )
     if isinstance(pad, AnnularPad):
       fig.add_trace(
-        go.Scatter(
-          x=pad.r_inner * np.cos(theta) * 1e3,
-          y=pad.r_inner * np.sin(theta) * 1e3,
-          fill="toself",
+        _shape_trace(
+          pad.r_inner * np.cos(theta) * 1e3,
+          pad.r_inner * np.sin(theta) * 1e3,
           fillcolor="white",
-          line={"color": "black"},
-          name="Shape",
-          showlegend=False,
         )
       )
     fig.update_yaxes(scaleanchor="x", scaleratio=1)
   elif isinstance(pad, RectangularPad):
     fig.add_trace(
-      go.Scatter(
-        x=np.array([-1, -1, 1, 1, -1]) * pad.lx * 0.5e3,
-        y=np.array([-1, 1, 1, -1, -1]) * pad.ly * 0.5e3,
-        fill="toself",
-        fillcolor="lightgrey",
-        mode="lines",
-        line={"color": "black"},
-        name="Shape",
-        showlegend=False,
+      _shape_trace(
+        np.array([-1, -1, 1, 1, -1]) * pad.lx * 0.5e3,
+        np.array([-1, 1, 1, -1, -1]) * pad.ly * 0.5e3,
       )
     )
     fig.update_xaxes(range=np.array([-0.6, 0.6]) * pad.lx * 1e3, scaleanchor="y", scaleratio=1)
     fig.update_yaxes(range=np.array([-0.6, 0.6]) * pad.ly * 1e3)
   elif isinstance(pad, LinearPad):
     fig.add_trace(
-      go.Scatter(
-        x=np.array([1, 1]) * pad.length * 1e3,
-        y=np.array([0, 1000]),
-        mode="lines",
-        line={"color": "black"},
-        name="Shape",
-        showlegend=False,
-      )
-    )
-    fig.add_trace(
-      go.Scatter(
-        x=np.array([0, 0]),
-        y=np.array([0, 1000]),
-        fill="tonextx",
-        fillcolor="lightgrey",
-        mode="lines",
-        line={"color": "black"},
-        name="Shape",
-        showlegend=False,
+      _shape_trace(
+        np.array([0, 0, 1, 1]) * pad.length * 1e3,
+        np.array([0, 1000, 1000, 0]),
       )
     )
     fig.update_xaxes(range=np.array([-0.5, 1.5]) * pad.length * 1e3)
     fig.update_yaxes(range=[0, 1000])
   elif isinstance(pad, JournalPad):
     fig.add_trace(
-      go.Scatter(
-        x=np.array([-1, -1, 1, 1, -1]) * np.pi,
-        y=np.array([-1, 1, 1, -1, -1]) * pad.length * 0.5e3,
-        fill="toself",
-        fillcolor="lightgrey",
-        mode="lines",
-        line={"color": "black"},
-        name="Shape",
-        showlegend=False,
+      _shape_trace(
+        np.array([-1, -1, 1, 1, -1]) * np.pi,
+        np.array([-1, 1, 1, -1, -1]) * pad.length * 0.5e3,
       )
     )
-    fig.update_xaxes(title_text="θ (rad)")
-  fig.update_xaxes(
-    title_text="x (mm)" if not isinstance(pad, JournalPad) else "θ (rad)", **AXIS_STYLE
-  )
+  fig.update_xaxes(title_text="θ (rad)" if problem.journal else "x (mm)", **AXIS_STYLE)
   fig.update_yaxes(title_text="y (mm)", **AXIS_STYLE)
   fig.update_layout(title="XY profile", **FIG_LAYOUT)
   return fig
@@ -390,42 +359,24 @@ def plot_pad_xy(spec: BearingSpec | BearingProblem) -> go.Figure:
 
 def plot_pad_xz(spec: BearingSpec | BearingProblem) -> go.Figure:
   """Manufacturing-error profile: section curve (1-D) or contour (2-D)."""
-  problem = build_problem(spec) if isinstance(spec, BearingSpec) else spec
+  problem = _as_problem(spec)
   geom = problem.geom
   fig = go.Figure()
   if geom.ndim == 1:
     x = np.concatenate(([-problem.x[-1]], -np.flip(problem.x), problem.x, [problem.x[-1]])) * 1e3
     y = np.concatenate(([100.0], np.flip(geom), geom, [100.0])) * 1e6
-    fig.add_trace(
-      go.Scatter(
-        x=x,
-        y=y,
-        fill="toself",
-        fillcolor="lightgrey",
-        mode="lines",
-        line={"color": "black"},
-        name="Bearing",
-        showlegend=True,
-      )
-    )
+    fig.add_trace(_shape_trace(x, y, legend=True))
     fig.update_yaxes(range=[-0.5, 1.0 + float(np.max(geom)) * 1e6], title_text="Shape (μm)")
   else:
-    x = problem.x if problem.journal else problem.x * 1e3
+    zmax = float(np.max(geom)) * 1e6
     fig.add_trace(
-      go.Contour(
-        z=geom.T * 1e6,
-        x=x,
-        y=problem.y * 1e3,
-        colorscale="Viridis",
-        zmin=0,
-        zmax=float(np.max(geom)) * 1e6 if np.max(geom) > 0 else 1.0,
-        contours={
-          "coloring": "heatmap",
-          "showlabels": True,
-          "labelfont": {"size": 10, "color": "white"},
-        },
-        colorbar={"title": "(μm)", "thickness": 15},
+      _contour(
+        geom.T * 1e6,
+        _x_values(problem),
+        problem.y * 1e3,
+        zmax=zmax if zmax > 0 else 1.0,
         name="Profile",
+        cbtitle="(μm)",
       )
     )
     fig.update_yaxes(title_text="y (mm)")
