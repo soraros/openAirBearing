@@ -2,9 +2,9 @@
 
 The data spine of v2: a ``BearingSpec`` is pure declarative data (pad,
 restrictor, reservoir state, error profile, grid). ``build_problem``
-compiles it once into a ``BearingProblem`` — immutable grid axes, film-gap
-stack, integration weights, and boundary statements with clean array
-conventions:
+compiles it once into a ``BearingProblem`` by orchestrating the pad-owned
+grid semantics (see ``openairbearing.v2.geometry.pads``) into immutable
+arrays with clean conventions:
 
 - 1-D pads: fields are ``(nx,)``, sample stacks are ``(nh, nx)``.
 - 2-D pads: fields are ``(nx, ny)``, sample stacks are ``(nh, nx, ny)``.
@@ -13,10 +13,18 @@ conventions:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
 
 import numpy as np
 
+from openairbearing.v2.geometry.boundaries import (
+  BC_DIRICHLET,
+  BC_NEUMANN,
+  BC_PERIODIC,
+  BCKind,
+  BoundarySpec,
+  EdgeBC,
+  PressureSlot,
+)
 from openairbearing.v2.geometry.grid import GridSpec
 from openairbearing.v2.geometry.pads import (
   AnnularPad,
@@ -44,69 +52,6 @@ __all__ = [
   "PressureSlot",
   "build_problem",
 ]
-
-# ── Boundary statements ───────────────────────────────────────────────────────
-
-BC_DIRICHLET: int = 0
-BC_NEUMANN: int = 1
-BC_PERIODIC: int = 2
-
-type BCKind = Literal["dirichlet", "neumann", "periodic"]
-type PressureSlot = Literal["supply", "chamber", "ambient", ""]
-
-_BC_CODES: dict[str, int] = {
-  "dirichlet": BC_DIRICHLET,
-  "neumann": BC_NEUMANN,
-  "periodic": BC_PERIODIC,
-}
-
-_PRESSURE_SLOTS: tuple[str, ...] = ("supply", "chamber", "ambient", "")
-
-
-@dataclass(frozen=True, slots=True)
-class EdgeBC:
-  """One grid-edge boundary statement; ``slot`` names the reservoir pressure."""
-
-  kind: BCKind
-  slot: PressureSlot = ""
-
-  def __post_init__(self) -> None:
-    if self.kind not in _BC_CODES:
-      raise ValueError(f"EdgeBC.kind must be one of {tuple(_BC_CODES)}, got {self.kind!r}")
-    if self.slot not in _PRESSURE_SLOTS:
-      raise ValueError(f"EdgeBC.slot must be a pressure slot, got {self.slot!r}")
-    if self.kind == "dirichlet" and not self.slot:
-      raise ValueError("dirichlet EdgeBC requires a pressure slot")
-    if self.kind != "dirichlet" and self.slot:
-      raise ValueError(f"{self.kind} EdgeBC takes no pressure slot")
-
-  @property
-  def code(self) -> int:
-    """Integer kind code passed to numba kernels."""
-    return _BC_CODES[self.kind]
-
-  def pressure(self, state: OperatingState) -> float:
-    """Resolve the slot to an absolute pressure; 0 for value-free kinds."""
-    if self.slot == "supply":
-      return state.p_supply
-    if self.slot == "chamber":
-      return state.p_chamber
-    if self.slot == "ambient":
-      return state.p_ambient
-    return 0.0
-
-
-@dataclass(frozen=True, slots=True)
-class BoundarySpec:
-  """Boundary statements on the four grid edges (y edges unused in 1-D)."""
-
-  x_lo: EdgeBC
-  x_hi: EdgeBC
-  y_lo: EdgeBC = field(default_factory=lambda: EdgeBC("periodic"))
-  y_hi: EdgeBC = field(default_factory=lambda: EdgeBC("periodic"))
-
-
-# ── Spec and compiled problem ─────────────────────────────────────────────────
 
 _PAD_TYPES: tuple[type, ...] = (CircularPad, AnnularPad, LinearPad, RectangularPad, JournalPad)
 
@@ -173,7 +118,6 @@ class BearingProblem:
     gaps: F64,
     dA: FieldScalar,
     load_weights: FieldScalar,
-    stiffness_sign: float,
     boundaries: BoundarySpec,
   ) -> BearingProblem:
     """Join arrays emitted by the one canonical problem compiler."""
@@ -188,7 +132,7 @@ class BearingProblem:
     object.__setattr__(out, "gaps", _readonly(gaps))
     object.__setattr__(out, "dA", _readonly(dA))
     object.__setattr__(out, "load_weights", _readonly(load_weights))
-    object.__setattr__(out, "stiffness_sign", float(stiffness_sign))
+    object.__setattr__(out, "stiffness_sign", float(spec.pad.STIFFNESS_SIGN))
     object.__setattr__(
       out, "beta", _readonly(spec.restrictor.feeding_parameter(spec.pad.extent, samples))
     )
@@ -238,146 +182,28 @@ def build_problem(spec: BearingSpec) -> BearingProblem:
   """Compile one declarative spec into the immutable film problem."""
   if not isinstance(spec, BearingSpec):
     raise TypeError(f"spec must be a BearingSpec, got {spec!r}")
-  x, y = _grid_axes(spec)
+  pad = spec.pad
+  x, y = pad.axes(spec.grid.nx, spec.grid.ny)
   samples = np.linspace(spec.grid.sample_min, spec.grid.sample_max, spec.grid.n_samples)
-  geom = _error_field(spec, x, y)
-  gaps = _film_stack(spec, x, samples, geom)
-  dA = _area_weights(spec, x, y)
-  load_weights = _load_weights(spec, x, y, dA)
+  x_extent, y_extent, layout = pad.profile_args()
+  geom = eval_surface_error(
+    spec.error, x=x, y=y, x_extent=x_extent, y_extent=y_extent, layout=layout
+  )
+  dA = pad.area_weights(x, y)
   return BearingProblem._from_compiled(
     spec=spec,
     x=x,
     y=y,
     samples=samples,
     geom=geom,
-    gaps=gaps,
+    gaps=pad.film(samples, geom, x, y),
     dA=dA,
-    load_weights=load_weights,
-    stiffness_sign=1.0 if isinstance(spec.pad, JournalPad) else -1.0,
-    boundaries=_boundary_spec(spec.pad),
+    load_weights=pad.load_weights(x, y, dA),
+    boundaries=pad.boundaries(),
   )
-
-
-# ── Compiler internals ────────────────────────────────────────────────────────
 
 
 def _readonly(arr: F64) -> F64:
   out = np.ascontiguousarray(arr, dtype=np.float64)
   out.setflags(write=False)
   return out
-
-
-def _grid_axes(spec: BearingSpec) -> tuple[AxisScalar, AxisScalar]:
-  """Node coordinates per pad; the y axis is a single placeholder in 1-D."""
-  pad = spec.pad
-  nx, ny = spec.grid.nx, spec.grid.ny
-  if isinstance(pad, CircularPad):
-    return np.linspace(pad.r_center, pad.r, nx), _theta_or_placeholder(pad, ny)
-  if isinstance(pad, AnnularPad):
-    return np.linspace(pad.r_inner, pad.r, nx), _theta_or_placeholder(pad, ny)
-  if isinstance(pad, LinearPad):
-    return np.linspace(0.0, pad.length, nx), np.zeros(1)
-  if isinstance(pad, RectangularPad):
-    return np.linspace(-pad.lx / 2, pad.lx / 2, nx), np.linspace(-pad.ly / 2, pad.ly / 2, ny)
-  if isinstance(pad, JournalPad):
-    theta = np.linspace(-np.pi, np.pi, nx, endpoint=False)
-    return theta, np.linspace(-pad.length / 2, pad.length / 2, ny)
-  raise TypeError(f"unsupported pad {pad!r}")
-
-
-def _theta_or_placeholder(pad: Pad, ny: int) -> AxisScalar:
-  """Periodic θ axis for polar pads solved on a 2-D grid."""
-  if ny <= 1:
-    return np.zeros(1)
-  return np.linspace(0.0, 2.0 * np.pi, ny, endpoint=False)
-
-
-def _error_field(spec: BearingSpec, x: AxisScalar, y: AxisScalar) -> FieldScalar:
-  pad = spec.pad
-  if isinstance(pad, JournalPad):
-    return eval_surface_error(
-      spec.error, x=x, y=y, x_extent=2.0 * np.pi, y_extent=pad.length, layout="cartesian"
-    )
-  if isinstance(pad, RectangularPad):
-    return eval_surface_error(
-      spec.error, x=x, y=y, x_extent=pad.lx, y_extent=pad.ly, layout="cartesian"
-    )
-  layout = "polar" if pad.CSYS == "polar" else "cartesian"
-  return eval_surface_error(
-    spec.error, x=x, y=y, x_extent=pad.extent, y_extent=pad.extent, layout=layout
-  )
-
-
-def _film_stack(spec: BearingSpec, x: AxisScalar, samples: SampleScalar, geom: FieldScalar) -> F64:
-  """Film-gap field per sample: nominal gap plus the error profile.
-
-  Journal pads sweep eccentricity instead: the nominal film is the
-  eccentric clearance field h(e, θ), matching the v1 formula.
-  """
-  pad = spec.pad
-  if isinstance(pad, JournalPad):
-    r = pad.r
-    c = pad.clearance
-    e = samples[:, None]
-    theta = x[None, :]
-    clearance = r - np.sqrt((r - c / 2) ** 2 + e**2 + 2.0 * e * (r - c / 2) * np.cos(theta))
-    return clearance[:, :, None] + geom[None, :, :]
-  if geom.ndim == 1:
-    return samples[:, None] + geom[None, :]
-  return samples[:, None, None] + geom[None, :, :]
-
-
-def _area_weights(spec: BearingSpec, x: AxisScalar, y: AxisScalar) -> FieldScalar:
-  """Load-integration weights per grid node (trapezoidal at 1-D edges)."""
-  pad = spec.pad
-  if y.size <= 1:
-    if pad.CSYS == "polar":
-      dA = np.pi * np.gradient(x**2)
-    else:
-      dA = np.gradient(x).copy()
-    dA[[0, -1]] /= 2.0
-    return dA
-  if isinstance(pad, JournalPad):
-    dtheta = 2.0 * np.pi / x.size
-    dy = pad.length / (y.size - 1)
-    wy = np.ones(y.size)
-    wy[[0, -1]] = 0.5
-    return pad.r * dtheta * dy * wy[None, :] * np.ones((x.size, y.size))
-  if pad.CSYS == "polar":
-    r0 = x[0]
-    dx2 = x**2 - np.insert(x[:-1], 0, r0) ** 2
-    dtheta = 2.0 * np.pi / y.size
-    return 0.5 * dx2[:, None] * dtheta * np.ones((x.size, y.size))
-  dx = float(x[1] - x[0])
-  dy = float(y[1] - y[0])
-  wx = np.ones(x.size)
-  wx[[0, -1]] = 0.5
-  wy = np.ones(y.size)
-  wy[[0, -1]] = 0.5
-  return dx * dy * wx[:, None] * wy[None, :]
-
-
-def _load_weights(spec: BearingSpec, x: AxisScalar, y: AxisScalar, dA: FieldScalar) -> FieldScalar:
-  """Journal pads project pressure onto cos θ along the eccentricity direction."""
-  if isinstance(spec.pad, JournalPad):
-    return np.cos(x)[:, None] * dA
-  return dA
-
-
-def _boundary_spec(pad: Pad) -> BoundarySpec:
-  """Canonical boundary statements per pad type."""
-  ambient = EdgeBC("dirichlet", "ambient")
-  chamber = EdgeBC("dirichlet", "chamber")
-  neumann = EdgeBC("neumann")
-  periodic = EdgeBC("periodic")
-  if isinstance(pad, CircularPad):
-    return BoundarySpec(x_lo=neumann, x_hi=ambient, y_lo=periodic, y_hi=periodic)
-  if isinstance(pad, AnnularPad):
-    return BoundarySpec(x_lo=chamber, x_hi=ambient, y_lo=periodic, y_hi=periodic)
-  if isinstance(pad, LinearPad):
-    return BoundarySpec(x_lo=chamber, x_hi=ambient)
-  if isinstance(pad, RectangularPad):
-    return BoundarySpec(x_lo=ambient, x_hi=ambient, y_lo=ambient, y_hi=ambient)
-  if isinstance(pad, JournalPad):
-    return BoundarySpec(x_lo=periodic, x_hi=periodic, y_lo=ambient, y_hi=ambient)
-  raise TypeError(f"unsupported pad {pad!r}")

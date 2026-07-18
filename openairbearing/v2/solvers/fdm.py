@@ -22,9 +22,9 @@ import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 from numba import njit, prange
 
+from openairbearing.v2.geometry.boundaries import BC_DIRICHLET, BC_NEUMANN, BC_PERIODIC
 from openairbearing.v2.geometry.pads import JournalPad
 from openairbearing.v2.primitives.types import F64, I32, StackScalar
-from openairbearing.v2.problem import BC_DIRICHLET, BC_NEUMANN, BC_PERIODIC
 
 if TYPE_CHECKING:
   from openairbearing.v2.problem import BearingProblem
