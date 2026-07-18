@@ -85,6 +85,9 @@ def _dA_polar(x: AxisScalar, ny: int) -> FieldScalar:
 
 # ── Pads ──────────────────────────────────────────────────────────────────────
 
+type EdgeQuad = tuple[EdgeBC, EdgeBC, EdgeBC, EdgeBC]
+"""(x_lo, x_hi, y_lo, y_hi) edge statements for one pad."""
+
 
 class PadBase:
   """Shared pad defaults; subclasses declare fields and what is special."""
@@ -93,23 +96,8 @@ class PadBase:
   DIM: ClassVar[int]
   SEAL: ClassVar[bool]
   ANALYTIC: ClassVar[bool]
-  EDGES: ClassVar[tuple[EdgeBC, EdgeBC, EdgeBC, EdgeBC]]
+  EDGES: ClassVar[EdgeQuad]
   STIFFNESS_SIGN: ClassVar[float] = -1.0
-
-  @property
-  def area(self) -> float:
-    raise NotImplementedError
-
-  @property
-  def extent(self) -> float:
-    """Characteristic length for the porous feeding parameter β."""
-    raise NotImplementedError
-
-  def axes(self, nx: int, ny: int) -> tuple[AxisScalar, AxisScalar]:
-    raise NotImplementedError
-
-  def area_weights(self, x: AxisScalar, y: AxisScalar) -> FieldScalar:
-    raise NotImplementedError
 
   def boundaries(self) -> BoundarySpec:
     return BoundarySpec(*self.EDGES)
@@ -137,12 +125,7 @@ class CircularPad(PadBase):
   DIM: ClassVar[int] = 1
   SEAL: ClassVar[bool] = False
   ANALYTIC: ClassVar[bool] = True
-  EDGES: ClassVar[tuple[EdgeBC, EdgeBC, EdgeBC, EdgeBC]] = (
-    _NEUMANN,
-    _AMBIENT,
-    _PERIODIC,
-    _PERIODIC,
-  )
+  EDGES: ClassVar[EdgeQuad] = (_NEUMANN, _AMBIENT, _PERIODIC, _PERIODIC)
 
   def __post_init__(self) -> None:
     _validate_pos(self, "r", "r_center")
@@ -176,12 +159,7 @@ class AnnularPad(PadBase):
   DIM: ClassVar[int] = 1
   SEAL: ClassVar[bool] = True
   ANALYTIC: ClassVar[bool] = True
-  EDGES: ClassVar[tuple[EdgeBC, EdgeBC, EdgeBC, EdgeBC]] = (
-    _CHAMBER,
-    _AMBIENT,
-    _PERIODIC,
-    _PERIODIC,
-  )
+  EDGES: ClassVar[EdgeQuad] = (_CHAMBER, _AMBIENT, _PERIODIC, _PERIODIC)
 
   def __post_init__(self) -> None:
     _validate_pos(self, "r", "r_inner")
@@ -217,12 +195,7 @@ class LinearPad(PadBase):
   DIM: ClassVar[int] = 1
   SEAL: ClassVar[bool] = True
   ANALYTIC: ClassVar[bool] = True
-  EDGES: ClassVar[tuple[EdgeBC, EdgeBC, EdgeBC, EdgeBC]] = (
-    _CHAMBER,
-    _AMBIENT,
-    _PERIODIC,
-    _PERIODIC,
-  )
+  EDGES: ClassVar[EdgeQuad] = (_CHAMBER, _AMBIENT, _PERIODIC, _PERIODIC)
 
   def __post_init__(self) -> None:
     _validate_pos(self, "length")
@@ -254,12 +227,7 @@ class RectangularPad(PadBase):
   DIM: ClassVar[int] = 2
   SEAL: ClassVar[bool] = False
   ANALYTIC: ClassVar[bool] = False
-  EDGES: ClassVar[tuple[EdgeBC, EdgeBC, EdgeBC, EdgeBC]] = (
-    _AMBIENT,
-    _AMBIENT,
-    _AMBIENT,
-    _AMBIENT,
-  )
+  EDGES: ClassVar[EdgeQuad] = (_AMBIENT, _AMBIENT, _AMBIENT, _AMBIENT)
 
   def __post_init__(self) -> None:
     _validate_pos(self, "lx", "ly")
@@ -304,12 +272,7 @@ class JournalPad(PadBase):
   SEAL: ClassVar[bool] = True
   ANALYTIC: ClassVar[bool] = False
   STIFFNESS_SIGN: ClassVar[float] = 1.0
-  EDGES: ClassVar[tuple[EdgeBC, EdgeBC, EdgeBC, EdgeBC]] = (
-    _PERIODIC,
-    _PERIODIC,
-    _AMBIENT,
-    _AMBIENT,
-  )
+  EDGES: ClassVar[EdgeQuad] = (_PERIODIC, _PERIODIC, _AMBIENT, _AMBIENT)
 
   def __post_init__(self) -> None:
     _validate_pos(self, "r", "length", "clearance")
