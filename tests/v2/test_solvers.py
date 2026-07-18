@@ -13,83 +13,94 @@ from openairbearing.v2.solvers.solution import Solution
 
 from .conftest import RTOL_NUMERIC, RTOL_NUMERIC_FINE
 
-# ── Pinned regression: circular ───────────────────────────────────────────────
+# ── Pinned regression: 1-D pads ───────────────────────────────────────────────
+
+PINS_1D = [
+  # (pad, method, load[:3], load[-3:], peak_stiffness, peak_index, q_supply[:3])
+  (
+    "circular",
+    "analytic",
+    [613.1564843027, 575.1381364761, 524.7198067878],
+    [55.3395027047, 48.6962918432, 43.0191338173],
+    5.818180e07,
+    4,
+    [0.1086958706, 0.4279860451, 0.8359538857],
+  ),
+  (
+    "circular",
+    "numeric",
+    [611.9922249607, 574.6195309504, 524.4380040429],
+    [55.3142161213, 48.6735347152, 42.9986111883],
+    5.814531e07,
+    4,
+    [0.1053694531, 0.4249758298, 0.8338864913],
+  ),
+  (
+    "annular",
+    "analytic",
+    [1203.8196088681, 1075.763879856, 906.1418098859],
+    [39.0196227054, 33.6684444883, 29.2248619522],
+    1.756458e08,
+    2,
+    [0.1990002184, 0.7547944893, 1.4716759818],
+  ),
+  (
+    "annular",
+    "numeric",
+    [1201.9842048094, 1075.0158415095, 905.7346714336],
+    None,
+    1.753877e08,
+    2,
+    [0.1958182685, 0.7524980383, 1.4700342347],
+  ),
+  (
+    "linear",
+    "analytic",
+    [11790.6630921399, 11179.6271388015, 10304.3147379028],
+    [874.0382965003, 758.6235378853, 661.7999123329],
+    1.178164e09,
+    4,
+    [0.5093843898, 2.4876036691, 5.4158921441],
+  ),
+  (
+    "linear",
+    "numeric",
+    [11763.1788468648, 11165.4038427634, 10296.1308186835],
+    None,
+    1.176717e09,
+    4,
+    [0.494976933, 2.4654554736, 5.3980032778],
+  ),
+]
 
 
-def test_circular_analytic_pinned(circular_spec):
+@pytest.mark.parametrize(
+  "name,method,w_head,w_tail,k_peak,i_peak,qs_head",
+  PINS_1D,
+  ids=[f"{name}-{method}" for name, method, *_ in PINS_1D],
+)
+def test_pinned_1d(name, method, w_head, w_tail, k_peak, i_peak, qs_head):
+  r = solve_bearing(getattr(catalog, name)(), method)
+  np.testing.assert_allclose(r.load[:3], w_head, rtol=1e-8)
+  np.testing.assert_allclose(r.peak_stiffness, k_peak, rtol=1e-5)
+  assert r.peak_index == i_peak
+  np.testing.assert_allclose(r.q_supply[:3], qs_head, rtol=1e-6)
+  if w_tail is not None:
+    np.testing.assert_allclose(r.load[-3:], w_tail, rtol=1e-8)
+
+
+def test_circular_analytic_pressure_pinned(circular_spec):
+  """Center pressure at the largest gap (weak-film limit)."""
   r = solve_bearing(circular_spec, "analytic")
-  np.testing.assert_allclose(
-    r.load[:3], [613.1564843027, 575.1381364761, 524.7198067878], rtol=1e-8
-  )
-  np.testing.assert_allclose(r.load[-3:], [55.3395027047, 48.6962918432, 43.0191338173], rtol=1e-8)
-  np.testing.assert_allclose(r.peak_stiffness, 5.818180e07, rtol=1e-5)
-  assert r.peak_index == 4
-  np.testing.assert_allclose(r.q_supply[:3], [0.1086958706, 0.4279860451, 0.8359538857], rtol=1e-6)
   np.testing.assert_allclose(r.p[0, 0], 701325.0, rtol=1e-8)
   np.testing.assert_allclose(r.p[0, -1], 101325.0, rtol=1e-8)
   np.testing.assert_allclose(r.p[-1, 0], 174617.674906, rtol=1e-6)
 
 
-def test_circular_numeric_pinned(circular_spec):
-  r = solve_bearing(circular_spec, "numeric")
-  np.testing.assert_allclose(
-    r.load[:3], [611.9922249607, 574.6195309504, 524.4380040429], rtol=1e-8
-  )
-  np.testing.assert_allclose(r.load[-3:], [55.3142161213, 48.6735347152, 42.9986111883], rtol=1e-8)
-  np.testing.assert_allclose(r.peak_stiffness, 5.814531e07, rtol=1e-5)
-  assert r.peak_index == 4
-  np.testing.assert_allclose(r.q_supply[:3], [0.1053694531, 0.4249758298, 0.8338864913], rtol=1e-6)
-
-
-# ── Pinned regression: annular ────────────────────────────────────────────────
-
-
-def test_annular_analytic_pinned(annular_spec):
+def test_annular_analytic_pmax_pinned(annular_spec):
+  """Peak pressure reaches the supply pressure."""
   r = solve_bearing(annular_spec, "analytic")
-  np.testing.assert_allclose(
-    r.load[:3], [1203.8196088681, 1075.763879856, 906.1418098859], rtol=1e-8
-  )
-  np.testing.assert_allclose(r.load[-3:], [39.0196227054, 33.6684444883, 29.2248619522], rtol=1e-8)
-  np.testing.assert_allclose(r.peak_stiffness, 1.756458e08, rtol=1e-5)
-  assert r.peak_index == 2
-  np.testing.assert_allclose(r.q_supply[:3], [0.1990002184, 0.7547944893, 1.4716759818], rtol=1e-6)
   np.testing.assert_allclose(np.max(r.p), 701321.436745, rtol=1e-6)
-
-
-def test_annular_numeric_pinned(annular_spec):
-  r = solve_bearing(annular_spec, "numeric")
-  np.testing.assert_allclose(
-    r.load[:3], [1201.9842048094, 1075.0158415095, 905.7346714336], rtol=1e-8
-  )
-  np.testing.assert_allclose(r.peak_stiffness, 1.753877e08, rtol=1e-5)
-  assert r.peak_index == 2
-  np.testing.assert_allclose(r.q_supply[:3], [0.1958182685, 0.7524980383, 1.4700342347], rtol=1e-6)
-
-
-# ── Pinned regression: linear ─────────────────────────────────────────────────
-
-
-def test_linear_analytic_pinned(linear_spec):
-  r = solve_bearing(linear_spec, "analytic")
-  np.testing.assert_allclose(
-    r.load[:3], [11790.6630921399, 11179.6271388015, 10304.3147379028], rtol=1e-8
-  )
-  np.testing.assert_allclose(
-    r.load[-3:], [874.0382965003, 758.6235378853, 661.7999123329], rtol=1e-8
-  )
-  np.testing.assert_allclose(r.peak_stiffness, 1.178164e09, rtol=1e-5)
-  assert r.peak_index == 4
-  np.testing.assert_allclose(r.q_supply[:3], [0.5093843898, 2.4876036691, 5.4158921441], rtol=1e-6)
-
-
-def test_linear_numeric_pinned(linear_spec):
-  r = solve_bearing(linear_spec, "numeric")
-  np.testing.assert_allclose(
-    r.load[:3], [11763.1788468648, 11165.4038427634, 10296.1308186835], rtol=1e-8
-  )
-  np.testing.assert_allclose(r.peak_stiffness, 1.176717e09, rtol=1e-5)
-  assert r.peak_index == 4
-  np.testing.assert_allclose(r.q_supply[:3], [0.494976933, 2.4654554736, 5.3980032778], rtol=1e-6)
 
 
 # ── Pinned regression: rectangular / journal 2-D ──────────────────────────────
