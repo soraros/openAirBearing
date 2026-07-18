@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=42", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "openairbearing"
@@ -9,19 +9,22 @@ description = "A Python package for externally pressurized air bearing analysis.
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
-authors = [
-    { name = "Mikael Miettinen", email = "mikael.miettinen@iki.fi" },
-]
-requires-python = ">=3.12"
+authors = [{ name = "Mikael Miettinen", email = "mikael.miettinen@iki.fi" }]
+requires-python = ">=3.13"
 classifiers = [
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
 dependencies = [
     "dash>=2.18.2,<3.0.0",
     "jax>=0.6.2",
     "matplotlib>=3.8.0,<4.0.0",
-    "numpy>=2.2.3,<3.0.0",
+    # numba 0.62.x supports numpy <2.4; keep numpy in the compatible window
+    "numpy>=2.3.5,<2.4",
+    # Pinned for Intel macOS support (llvmlite compatibility)
+    "numba>=0.62.1,<0.63.0",
     "plotly>=6.0.0,<7.0.0",
     "scikit-fem>=12.0.1",
     "scipy>=1.7.0,<2.0.0",
@@ -29,12 +32,10 @@ dependencies = [
 
 [project.optional-dependencies]
 ui = [
-    "dash>=2.18.2,<3.0.0",
-    "plotly>=6.0.0,<7.0.0",
     "celery[redis]>=5.4.0,<6.0.0",
     "diskcache>=5.6.3,<6.0.0",
     "multiprocess>=0.70.0",
-    "psutil>=5.9.0",
+    "psutil>=5.9.0,<7.0.0",
 ]
 
 [project.urls]
@@ -44,29 +45,52 @@ Homepage = "https://github.com/Aalto-Arotor/openAirBearing"
 [project.scripts]
 openairbearing = "openairbearing.app.app:main"
 
-# --- Setuptools specific configuration ---
-[tool.setuptools.packages.find]
-exclude = ["examples*", "tests*"]
-
-[tool.setuptools.dynamic]
-version = {attr = "openairbearing.__version__"}
-
-[tool.setuptools.package-data]
-"openairbearing.app" = ["assets/*"]
-
 [dependency-groups]
 dev = [
-    "ruff>=0.15.5",
-    "pytest>=9.0.2",
+    "pytest>=9.0.3",
+    "ruff>=0.15.9",
 ]
 
-[tool.ruff]
-line-length = 88
-target-version = "py312"
+[tool.hatch.version]
+path = "openairbearing/__init__.py"
 
-[tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+[tool.hatch.build.targets.wheel]
+packages = ["openairbearing"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+indent-width = 2
+line-length = 100
+target-version = "py313"
+extend-exclude = ["*.ipynb"]
 
 [tool.ruff.format]
-quote-style = "double"
-indent-style = "space"
+preview = true
+
+[tool.ruff.lint]
+preview = true
+extend-select = ["I", "UP", "NPY", "RUF"]
+ignore = [
+  "E741",   # ambiguous variable names (l, O, I) — standard in physics
+  "RUF001", # ambiguous unicode in strings (µ, −, ×)
+  "RUF002", # ambiguous unicode in docstrings
+  "RUF003", # ambiguous unicode in comments
+  "RUF043", # regex metacharacters in match= — intentional in pytest
+  "RUF052", # _-prefixed locals accessed — used for scoping, not dummies
+  "RUF201", # rule codes in selectors — codes are greppable, kept deliberately
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Legacy v1 modules predate the strict absim_fvm-style ruleset that
+# openairbearing/v2 (and tests/v2, examples/v2) follows. New code must not
+# add paths here.
+"openairbearing/__init__.py" = ["F401", "RUF022"]
+"openairbearing/*.py" = ["B", "C4", "I", "NPY", "PLR", "RUF", "UP"]
+"openairbearing/app/**" = ["B", "BLE", "C4", "I", "NPY", "PLC", "PLE", "PLR", "PLW", "RUF", "UP"]
+"tests/*.py" = ["B", "C4", "F401", "F403", "F405", "I", "NPY", "RUF", "UP"]
+"examples/*.py" = ["B", "C4", "I", "NPY", "RUF", "UP"]
+
+[tool.uv]
+default-groups = ["dev"]
