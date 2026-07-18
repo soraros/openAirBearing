@@ -4,6 +4,10 @@ Pads are frozen dimension records that also own their geometry semantics:
 grid axes, boundary statements, error-profile extents, film stack, and
 integration weights. ``build_problem`` (openairbearing.v2.problem)
 orchestrates these methods into the compiled ``BearingProblem``.
+
+``PadBase`` carries the shared defaults (thrust film, direct load
+projection, extent-driven profile, boundary statements from ``EDGES``);
+each pad declares only what is special about it.
 """
 
 from __future__ import annotations
@@ -25,6 +29,7 @@ __all__ = [
   "JournalPad",
   "LinearPad",
   "Pad",
+  "PadBase",
   "RectangularPad",
 ]
 
@@ -78,16 +83,51 @@ def _dA_polar(x: AxisScalar, ny: int) -> FieldScalar:
   return 0.5 * dx2[:, None] * dtheta * np.ones((x.size, ny))
 
 
-def _default_load_weights(x: AxisScalar, y: AxisScalar, dA: FieldScalar) -> FieldScalar:
-  """Thrust pads integrate gauge pressure directly."""
-  return dA
-
-
 # ── Pads ──────────────────────────────────────────────────────────────────────
 
 
+class PadBase:
+  """Shared pad defaults; subclasses declare fields and what is special."""
+
+  CSYS: ClassVar[CoordinateSystem]
+  DIM: ClassVar[int]
+  SEAL: ClassVar[bool]
+  ANALYTIC: ClassVar[bool]
+  EDGES: ClassVar[tuple[EdgeBC, EdgeBC, EdgeBC, EdgeBC]]
+  STIFFNESS_SIGN: ClassVar[float] = -1.0
+
+  @property
+  def area(self) -> float:
+    raise NotImplementedError
+
+  @property
+  def extent(self) -> float:
+    """Characteristic length for the porous feeding parameter β."""
+    raise NotImplementedError
+
+  def axes(self, nx: int, ny: int) -> tuple[AxisScalar, AxisScalar]:
+    raise NotImplementedError
+
+  def area_weights(self, x: AxisScalar, y: AxisScalar) -> FieldScalar:
+    raise NotImplementedError
+
+  def boundaries(self) -> BoundarySpec:
+    return BoundarySpec(*self.EDGES)
+
+  def profile_args(self) -> tuple[float, float, ProfileLayout]:
+    return self.extent, self.extent, self.CSYS
+
+  def film(self, samples: SampleScalar, geom: FieldScalar, x: AxisScalar, y: AxisScalar) -> F64:
+    """Nominal gap plus the error profile."""
+    return _gap_film(samples, geom)
+
+  def load_weights(self, x: AxisScalar, y: AxisScalar, dA: FieldScalar) -> FieldScalar:
+    """Thrust pads integrate gauge pressure directly."""
+    return dA
+
+
 @dataclass(frozen=True, slots=True)
-class CircularPad:
+class CircularPad(PadBase):
   """Circular thrust pad; polar 1-D grid over r in [r_center, r]."""
 
   r: float = 37e-3 / 2
@@ -97,7 +137,12 @@ class CircularPad:
   DIM: ClassVar[int] = 1
   SEAL: ClassVar[bool] = False
   ANALYTIC: ClassVar[bool] = True
-  STIFFNESS_SIGN: ClassVar[float] = -1.0
+  EDGES: ClassVar[tuple[EdgeBC, EdgeBC, EdgeBC, EdgeBC]] = (
+    _NEUMANN,
+    _AMBIENT,
+    _PERIODIC,
+    _PERIODIC,
+  )
 
   def __post_init__(self) -> None:
     _validate_pos(self, "r", "r_center")
@@ -111,30 +156,17 @@ class CircularPad:
 
   @property
   def extent(self) -> float:
-    """Characteristic length for the porous feeding parameter β."""
     return self.r
 
   def axes(self, nx: int, ny: int) -> tuple[AxisScalar, AxisScalar]:
     return np.linspace(self.r_center, self.r, nx), _theta_or_placeholder(ny)
 
-  def boundaries(self) -> BoundarySpec:
-    return BoundarySpec(x_lo=_NEUMANN, x_hi=_AMBIENT, y_lo=_PERIODIC, y_hi=_PERIODIC)
-
-  def profile_args(self) -> tuple[float, float, ProfileLayout]:
-    return self.r, self.r, "polar"
-
-  def film(self, samples: SampleScalar, geom: FieldScalar, x: AxisScalar, y: AxisScalar) -> F64:
-    return _gap_film(samples, geom)
-
   def area_weights(self, x: AxisScalar, y: AxisScalar) -> FieldScalar:
     return _dA_polar(x, y.size)
 
-  def load_weights(self, x: AxisScalar, y: AxisScalar, dA: FieldScalar) -> FieldScalar:
-    return _default_load_weights(x, y, dA)
-
 
 @dataclass(frozen=True, slots=True)
-class AnnularPad:
+class AnnularPad(PadBase):
   """Annular thrust pad (ring seal); polar 1-D grid over r in [r_inner, r]."""
 
   r: float = 58e-3 / 2
@@ -144,7 +176,12 @@ class AnnularPad:
   DIM: ClassVar[int] = 1
   SEAL: ClassVar[bool] = True
   ANALYTIC: ClassVar[bool] = True
-  STIFFNESS_SIGN: ClassVar[float] = -1.0
+  EDGES: ClassVar[tuple[EdgeBC, EdgeBC, EdgeBC, EdgeBC]] = (
+    _CHAMBER,
+    _AMBIENT,
+    _PERIODIC,
+    _PERIODIC,
+  )
 
   def __post_init__(self) -> None:
     _validate_pos(self, "r", "r_inner")
@@ -158,30 +195,17 @@ class AnnularPad:
 
   @property
   def extent(self) -> float:
-    """Characteristic length for the porous feeding parameter β."""
     return self.r
 
   def axes(self, nx: int, ny: int) -> tuple[AxisScalar, AxisScalar]:
     return np.linspace(self.r_inner, self.r, nx), _theta_or_placeholder(ny)
 
-  def boundaries(self) -> BoundarySpec:
-    return BoundarySpec(x_lo=_CHAMBER, x_hi=_AMBIENT, y_lo=_PERIODIC, y_hi=_PERIODIC)
-
-  def profile_args(self) -> tuple[float, float, ProfileLayout]:
-    return self.r, self.r, "polar"
-
-  def film(self, samples: SampleScalar, geom: FieldScalar, x: AxisScalar, y: AxisScalar) -> F64:
-    return _gap_film(samples, geom)
-
   def area_weights(self, x: AxisScalar, y: AxisScalar) -> FieldScalar:
     return _dA_polar(x, y.size)
 
-  def load_weights(self, x: AxisScalar, y: AxisScalar, dA: FieldScalar) -> FieldScalar:
-    return _default_load_weights(x, y, dA)
-
 
 @dataclass(frozen=True, slots=True)
-class LinearPad:
+class LinearPad(PadBase):
   """Infinitely wide linear pad; cartesian 1-D grid over x in [0, length].
 
   Loads and flows are per unit width [N/m, L/min per m].
@@ -193,7 +217,12 @@ class LinearPad:
   DIM: ClassVar[int] = 1
   SEAL: ClassVar[bool] = True
   ANALYTIC: ClassVar[bool] = True
-  STIFFNESS_SIGN: ClassVar[float] = -1.0
+  EDGES: ClassVar[tuple[EdgeBC, EdgeBC, EdgeBC, EdgeBC]] = (
+    _CHAMBER,
+    _AMBIENT,
+    _PERIODIC,
+    _PERIODIC,
+  )
 
   def __post_init__(self) -> None:
     _validate_pos(self, "length")
@@ -205,30 +234,17 @@ class LinearPad:
 
   @property
   def extent(self) -> float:
-    """Characteristic length for the porous feeding parameter β."""
     return self.length
 
   def axes(self, nx: int, ny: int) -> tuple[AxisScalar, AxisScalar]:
     return np.linspace(0.0, self.length, nx), np.zeros(1)
 
-  def boundaries(self) -> BoundarySpec:
-    return BoundarySpec(x_lo=_CHAMBER, x_hi=_AMBIENT)
-
-  def profile_args(self) -> tuple[float, float, ProfileLayout]:
-    return self.length, self.length, "cartesian"
-
-  def film(self, samples: SampleScalar, geom: FieldScalar, x: AxisScalar, y: AxisScalar) -> F64:
-    return _gap_film(samples, geom)
-
   def area_weights(self, x: AxisScalar, y: AxisScalar) -> FieldScalar:
     return _dA_line(x)
 
-  def load_weights(self, x: AxisScalar, y: AxisScalar, dA: FieldScalar) -> FieldScalar:
-    return _default_load_weights(x, y, dA)
-
 
 @dataclass(frozen=True, slots=True)
-class RectangularPad:
+class RectangularPad(PadBase):
   """Rectangular thrust pad; cartesian 2-D grid centered on the origin."""
 
   lx: float = 80e-3
@@ -238,7 +254,12 @@ class RectangularPad:
   DIM: ClassVar[int] = 2
   SEAL: ClassVar[bool] = False
   ANALYTIC: ClassVar[bool] = False
-  STIFFNESS_SIGN: ClassVar[float] = -1.0
+  EDGES: ClassVar[tuple[EdgeBC, EdgeBC, EdgeBC, EdgeBC]] = (
+    _AMBIENT,
+    _AMBIENT,
+    _AMBIENT,
+    _AMBIENT,
+  )
 
   def __post_init__(self) -> None:
     _validate_pos(self, "lx", "ly")
@@ -250,7 +271,6 @@ class RectangularPad:
 
   @property
   def extent(self) -> float:
-    """Characteristic length for the porous feeding parameter β."""
     return self.lx
 
   def axes(self, nx: int, ny: int) -> tuple[AxisScalar, AxisScalar]:
@@ -259,24 +279,15 @@ class RectangularPad:
       np.linspace(-self.ly / 2, self.ly / 2, ny),
     )
 
-  def boundaries(self) -> BoundarySpec:
-    return BoundarySpec(x_lo=_AMBIENT, x_hi=_AMBIENT, y_lo=_AMBIENT, y_hi=_AMBIENT)
-
   def profile_args(self) -> tuple[float, float, ProfileLayout]:
     return self.lx, self.ly, "cartesian"
-
-  def film(self, samples: SampleScalar, geom: FieldScalar, x: AxisScalar, y: AxisScalar) -> F64:
-    return _gap_film(samples, geom)
 
   def area_weights(self, x: AxisScalar, y: AxisScalar) -> FieldScalar:
     return _dA_line(x)[:, None] * _dA_line(y)[None, :]
 
-  def load_weights(self, x: AxisScalar, y: AxisScalar, dA: FieldScalar) -> FieldScalar:
-    return _default_load_weights(x, y, dA)
-
 
 @dataclass(frozen=True, slots=True)
-class JournalPad:
+class JournalPad(PadBase):
   """Journal bearing pad; unwrapped 2-D grid over (θ, y).
 
   ``clearance`` is the diameter clearance (journal radius minus shaft
@@ -293,6 +304,12 @@ class JournalPad:
   SEAL: ClassVar[bool] = True
   ANALYTIC: ClassVar[bool] = False
   STIFFNESS_SIGN: ClassVar[float] = 1.0
+  EDGES: ClassVar[tuple[EdgeBC, EdgeBC, EdgeBC, EdgeBC]] = (
+    _PERIODIC,
+    _PERIODIC,
+    _AMBIENT,
+    _AMBIENT,
+  )
 
   def __post_init__(self) -> None:
     _validate_pos(self, "r", "length", "clearance")
@@ -304,15 +321,11 @@ class JournalPad:
 
   @property
   def extent(self) -> float:
-    """Characteristic length for the porous feeding parameter β."""
     return self.r
 
   def axes(self, nx: int, ny: int) -> tuple[AxisScalar, AxisScalar]:
     theta = np.linspace(-np.pi, np.pi, nx, endpoint=False)
     return theta, np.linspace(-self.length / 2, self.length / 2, ny)
-
-  def boundaries(self) -> BoundarySpec:
-    return BoundarySpec(x_lo=_PERIODIC, x_hi=_PERIODIC, y_lo=_AMBIENT, y_hi=_AMBIENT)
 
   def profile_args(self) -> tuple[float, float, ProfileLayout]:
     return 2.0 * np.pi, self.length, "cartesian"
