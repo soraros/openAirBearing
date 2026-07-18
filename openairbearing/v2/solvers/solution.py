@@ -35,8 +35,6 @@ __all__ = [
 
 type SolveMethod = Literal["analytic", "numeric", "numeric2d"]
 
-_SOLVE_METHODS: tuple[str, ...] = ("analytic", "numeric", "numeric2d")
-
 
 @dataclass(frozen=True, slots=True)
 class Solution:
@@ -52,16 +50,6 @@ class Solution:
   q_chamber: SampleScalar
 
   def __post_init__(self) -> None:
-    if self.method not in _SOLVE_METHODS:
-      raise ValueError(f"method must be one of {_SOLVE_METHODS}, got {self.method!r}")
-    nh = self.problem.n_samples
-    expected = (nh, *self.problem.geom.shape)
-    if self.p.shape != expected:
-      raise ValueError(f"p shape {self.p.shape}, expected {expected}")
-    for name in ("load", "stiffness", "q_supply", "q_ambient", "q_chamber"):
-      arr = getattr(self, name)
-      if arr.shape != (nh,):
-        raise ValueError(f"{name} shape {arr.shape}, expected ({nh},)")
     for arr in (
       self.p,
       self.load,
@@ -98,13 +86,10 @@ class Solution:
       raise AssertionError("p contains non-finite values")
     state = self.problem.state
     bc = self.problem.boundaries
-    if self.p.ndim == 2:
-      edges = (
-        (bc.x_lo, self.p[:, 0], "x_lo"),
-        (bc.x_hi, self.p[:, -1], "x_hi"),
-      )
-    else:
-      edges = ()
+    # p is (nh, nx) or (nh, nx, ny); every dirichlet edge sits at its psi value
+    edges = [(bc.x_lo, self.p[:, 0], "x_lo"), (bc.x_hi, self.p[:, -1], "x_hi")]
+    if self.p.ndim == 3:
+      edges += [(bc.y_lo, self.p[:, :, 0], "y_lo"), (bc.y_hi, self.p[:, :, -1], "y_hi")]
     for edge, values, name in edges:
       if edge.kind == "dirichlet":
         expected = edge.pressure(state)

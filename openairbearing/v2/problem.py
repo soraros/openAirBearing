@@ -70,16 +70,6 @@ class BearingSpec:
   def __post_init__(self) -> None:
     if not isinstance(self.pad, _PAD_TYPES):
       raise TypeError(f"pad must be a v2 pad spec, got {self.pad!r}")
-    if not isinstance(self.restrictor, PorousRestrictor):
-      raise TypeError(f"restrictor must be a PorousRestrictor, got {self.restrictor!r}")
-    if not isinstance(self.state, OperatingState):
-      raise TypeError(f"state must be an OperatingState, got {self.state!r}")
-    if not isinstance(self.error, SurfaceError):
-      raise TypeError(f"error must be a SurfaceError, got {self.error!r}")
-    if not isinstance(self.grid, GridSpec):
-      raise TypeError(f"grid must be a GridSpec, got {self.grid!r}")
-    if not isinstance(self.gas, Gas):
-      raise TypeError(f"gas must be a Gas, got {self.gas!r}")
     if self.pad.DIM == 2 and self.grid.ny < 2:
       raise ValueError(f"{type(self.pad).__name__} requires grid.ny >= 2")
 

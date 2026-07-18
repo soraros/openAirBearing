@@ -215,6 +215,20 @@ def assemble_2d(
   return m
 
 
+# (bc index, edge slice) for (x_lo, x_hi, y_lo, y_hi) on an (nx, ny) grid.
+_EDGES = (
+  (0, (0, slice(None))),
+  (1, (-1, slice(None))),
+  (2, (slice(None), 0)),
+  (3, (slice(None), -1)),
+)
+
+
+def _edge_slice(axis: int, which: int) -> tuple[slice | int, ...]:
+  """Index tuple selecting the lo (which=0) or hi (which=-1) edge along axis."""
+  return (which, slice(None)) if axis == 0 else (slice(None), which)
+
+
 def solve_fdm_2d(problem: BearingProblem) -> StackScalar:
   """2-D FDM pressure stack ``(nh, nx, ny)`` for one compiled problem."""
   state = problem.state
@@ -236,15 +250,10 @@ def solve_fdm_2d(problem: BearingProblem) -> StackScalar:
   )
   is_dir = np.zeros((nx, ny))
   dir_val = np.zeros((nx, ny))
-  for code, value, slc in (
-    (bc_codes[0], psi_bc[0], (0, slice(None))),
-    (bc_codes[1], psi_bc[1], (-1, slice(None))),
-    (bc_codes[2], psi_bc[2], (slice(None), 0)),
-    (bc_codes[3], psi_bc[3], (slice(None), -1)),
-  ):
-    if code == BC_DIRICHLET:
+  for i, slc in _EDGES:
+    if bc_codes[i] == BC_DIRICHLET:
       is_dir[slc] = 1.0
-      dir_val[slc] = value
+      dir_val[slc] = psi_bc[i]
 
   row = np.empty(5 * n, dtype=np.int32)
   col = np.empty(5 * n, dtype=np.int32)
@@ -258,14 +267,9 @@ def solve_fdm_2d(problem: BearingProblem) -> StackScalar:
     ax_w, ax_e = _face_coeffs(ex, cx, dx, bc_codes[0], bc_codes[1], axis=0)
     ay_s, ay_n = _face_coeffs(ey, cy, dy, bc_codes[2], bc_codes[3], axis=1)
     src = np.full((nx, ny), problem.source)
-    if bc_codes[0] != BC_PERIODIC:
-      src[0, :] = 0.0
-    if bc_codes[1] != BC_PERIODIC:
-      src[-1, :] = 0.0
-    if bc_codes[2] != BC_PERIODIC:
-      src[:, 0] = 0.0
-    if bc_codes[3] != BC_PERIODIC:
-      src[:, -1] = 0.0
+    for i, slc in _EDGES:
+      if bc_codes[i] != BC_PERIODIC:
+        src[slc] = 0.0
     rhs = (src * ps2).ravel()
     nnz = assemble_2d(
       ax_w,
@@ -316,21 +320,17 @@ def _face_coeffs(
   a_lo = 0.5 * (np.roll(e, 1, axis=axis) + e)
   a_hi = 0.5 * (np.roll(e, -1, axis=axis) + e)
   if bc_lo != BC_PERIODIC:
-    lo = (0, slice(None)) if axis == 0 else (slice(None), 0)
-    a_lo[lo] = a_hi[lo]  # mirror convention (fold target / unused)
+    a_lo[_edge_slice(axis, 0)] = a_hi[_edge_slice(axis, 0)]  # mirror (fold target/unused)
   if bc_hi != BC_PERIODIC:
-    hi = (-1, slice(None)) if axis == 0 else (slice(None), -1)
-    a_hi[hi] = a_lo[hi]
+    a_hi[_edge_slice(axis, -1)] = a_lo[_edge_slice(axis, -1)]
   a_lo = c * a_lo / spacing**2
   a_hi = c * a_hi / spacing**2
   if bc_lo == BC_NEUMANN:
-    lo = (0, slice(None)) if axis == 0 else (slice(None), 0)
-    a_hi[lo] = a_hi[lo] + a_lo[lo]
-    a_lo[lo] = 0.0
+    a_hi[_edge_slice(axis, 0)] += a_lo[_edge_slice(axis, 0)]
+    a_lo[_edge_slice(axis, 0)] = 0.0
   if bc_hi == BC_NEUMANN:
-    hi = (-1, slice(None)) if axis == 0 else (slice(None), -1)
-    a_lo[hi] = a_lo[hi] + a_hi[hi]
-    a_hi[hi] = 0.0
+    a_lo[_edge_slice(axis, -1)] += a_hi[_edge_slice(axis, -1)]
+    a_hi[_edge_slice(axis, -1)] = 0.0
   return (
     np.ascontiguousarray(a_lo, dtype=np.float64),
     np.ascontiguousarray(a_hi, dtype=np.float64),
