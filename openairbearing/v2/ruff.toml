@@ -1,0 +1,5 @@
+extend = "../../pyproject.toml"
+
+# v2 is fully typed: enforce annotations on every function signature.
+[lint]
+extend-select = ["ANN"]

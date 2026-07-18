@@ -18,11 +18,14 @@ classifiers = [
 ]
 dependencies = [
     "dash>=4.1.0",
+    "ipython>=9.12.0",
     "matplotlib>=3.10.8",
-    "numpy>=2.4.4",
+    # numba 0.62.x supports numpy <2.4; keep numpy in the compatible window
+    "numpy>=2.3.5,<2.4",
+    # Pinned for Intel macOS support (llvmlite compatibility)
+    "numba>=0.62.1,<0.63.0",
     "panel>=1.6.0",
     "plotly>=6.6.0",
-    "pytest>=9.0.2",
     "scipy>=1.17.1",
 ]
 
@@ -34,20 +37,53 @@ Homepage = "https://github.com/Aalto-Arotor/openAirBearing"
 openairbearing = "openairbearing.app.app:main"
 openairbearing-panel = "openairbearing.panel.app:main"
 
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+    "ruff>=0.15.9",
+]
+
 [tool.hatch.version]
 path = "openairbearing/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["openairbearing"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
 [tool.ruff]
 indent-width = 2
-line-length = 88
+line-length = 100
 target-version = "py313"
-
-[tool.ruff.lint]
-select = ["E", "F", "I"]
-ignore = ["E111", "E114"]
+extend-exclude = ["*.ipynb"]
 
 [tool.ruff.format]
-indent-style = "space"
+preview = true
+
+[tool.ruff.lint]
+preview = true
+extend-select = ["I", "UP", "NPY", "RUF"]
+ignore = [
+  "E741",   # ambiguous variable names (l, O, I) — standard in physics
+  "RUF001", # ambiguous unicode in strings (µ, −, ×)
+  "RUF002", # ambiguous unicode in docstrings
+  "RUF003", # ambiguous unicode in comments
+  "RUF043", # regex metacharacters in match= — intentional in pytest
+  "RUF052", # _-prefixed locals accessed — used for scoping, not dummies
+  "RUF201", # rule codes in selectors — codes are greppable, kept deliberately
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Legacy v1 modules predate the strict absim_fvm-style ruleset that
+# openairbearing/v2 (and tests/v2, examples/v2) follows. New code must not
+# add paths here.
+"openairbearing/__init__.py" = ["F401", "RUF022"]
+"openairbearing/*.py" = ["B", "C4", "I", "NPY", "PLR", "RUF", "UP"]
+"openairbearing/app/**" = ["BLE", "C4", "I", "NPY", "RUF", "UP"]
+"openairbearing/panel/**" = ["BLE", "C4", "I", "NPY", "PLC", "PLE", "PLR", "PLW", "RUF", "UP"]
+"tests/*.py" = ["C4", "F401", "I", "NPY", "RUF", "UP"]
+"examples/*.py" = ["C4", "I", "NPY", "RUF", "UP"]
+
+[tool.uv]
+default-groups = ["dev"]
