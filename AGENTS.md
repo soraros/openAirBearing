@@ -82,4 +82,31 @@ Conventions:
 
 - `notebooks/` is untracked local work — never commit it without being asked.
 - CI lint workflow uses black (legacy); the enforced local gate is ruff.
-- Commit style: imperative subject; v2 work so far is small focused commits.
+
+## Commit style
+
+Uniform message shape, all lowercase (identifiers stay verbatim):
+
+- subject: one imperative line, no prefix, no period
+  (`fix the rectangular grid spacing`, `add PadBase with shared pad defaults`)
+- body: one or two concise sentences — what was wrong, what changed
+- outline: for multi-part changes, one dash per part
+- for correctness bugs: a tiny repro example between body and outline
+
+Example:
+
+```
+fix the repr crash for non-journal bearings
+
+c and e were field(init=False) without defaults, assigned only by
+JournalBearing:
+
+  >>> repr(CircularBearing())
+  AttributeError: 'CircularBearing' object has no attribute 'c'
+
+give them default=None like theta/clearance.
+```
+
+Keep commits small and single-goal; fixups belong squashed into their
+parent, never as standalone commits.
+
