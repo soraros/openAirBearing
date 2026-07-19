@@ -114,3 +114,28 @@ def test_journal_theta_grid_periodic():
     np.testing.assert_allclose(np.diff(bearing.theta), 2 * np.pi / bearing.nx)
     assert bearing.dx == pytest.approx(2 * np.pi / bearing.nx)
     assert bearing.dy == pytest.approx(bearing.y[1] - bearing.y[0])
+
+
+def test_blocked_restrictor_circular():
+    """blocked=True zeroes permeability in the blocked band and solves."""
+    b = CircularBearing(blocked=True)
+    assert b.block_in is not None and b.block_in.any()
+    assert 0 < b.block_A < b.A
+    p = get_pressure_numeric(b)
+    p_open = get_pressure_numeric(CircularBearing())
+    assert p.shape == p_open.shape
+    assert not np.allclose(p, p_open)
+
+
+def test_blocked_restrictor_rectangular():
+    """blocked=True works on the centered 2D grid as well."""
+    b = RectangularBearing(nx=15, ny=10, nh=3, blocked=True, block_w=8e-3)
+    assert b.block_in is not None and b.block_in.any()
+    assert 0 < b.block_A < b.A
+    p = get_pressure_2d_numeric(b)
+    assert p.shape == (b.ny, b.nx, b.nh)
+
+
+def test_blocked_restrictor_journal_raises():
+    with pytest.raises(NotImplementedError, match="journal"):
+        JournalBearing(blocked=True)

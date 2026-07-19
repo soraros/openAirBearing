@@ -67,9 +67,29 @@ class BaseBearing:
         self.dx = np.gradient(self.x)
         self.dy = 1 if self.ny == 1 else np.gradient(self.y)
         self.A = get_area(self)
+        self._init_blocked()
         self.geom = get_geom(self)
         self.kappa = get_kappa(self)
         self.beta = get_beta(self)
+
+    def _init_blocked(self):
+        """Compute the blocked-node mask and the open (unblocked) area."""
+        if not self.blocked:
+            self.block_in = None
+            self.block_A = self.A
+            return
+        if self.case == "journal":
+            raise NotImplementedError(
+                "blocked restrictors are not implemented for journal bearings"
+            )
+        self.block_in = np.abs(self.x - self.block_x) <= self.block_w / 2
+        if self.csys == "polar":
+            r_out = self.block_x + self.block_w / 2
+            r_in = self.block_x - self.block_w / 2
+            blocked_area = np.pi * (r_out**2 - r_in**2)
+        else:
+            blocked_area = self.block_w * (self.ya if self.ny > 1 else 1)
+        self.block_A = self.A - blocked_area
 
 
 @dataclass
@@ -150,6 +170,7 @@ class RectangularBearing(BaseBearing):
         self.dx = self.xa / (self.nx - 1)
         self.dy = self.ya / (self.ny - 1)
         self.geom = get_geom(self)  # calculate after x y
+        self._init_blocked()  # calculate after x y
 
 
 @dataclass
