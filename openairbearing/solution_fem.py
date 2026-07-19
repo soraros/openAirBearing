@@ -12,7 +12,6 @@ from skfem import (
     condense,
     solve,
 )
-from skfem.autodiff import NonlinearForm
 from skfem.helpers import dot, grad
 
 from openairbearing.fem_utils import (
@@ -346,6 +345,10 @@ def solve_bearing_fem_2d_nonlinear(
     boundary_sets = fem_2d.boundary_sets
 
     def solve_one_h(i):
+        # imported lazily: skfem.autodiff requires jax, which has no wheels
+        # for Intel macOS; the package must import without it there
+        from skfem.autodiff import NonlinearForm
+
         def h_func(w):
             return b.h_func_2d(w.x[0], w.x[1], i)
 

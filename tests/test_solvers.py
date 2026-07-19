@@ -247,6 +247,7 @@ def test_solve_bearing_fem_2d_journal_centered_has_near_zero_projected_load():
     ],
 )
 def test_solve_bearing_fem_2d_full_smoke_all_geometries(bearing):
+    pytest.importorskip("jax", reason="jax has no wheels for Intel macOS")
     result = solve_bearing_fem_2d_nonlinear(
         bearing, max_iter=20, tol=1e-5, relaxation=0.7
     )
