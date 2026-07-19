@@ -106,3 +106,11 @@ def test_rectangular_grid_spacing_consistent():
     bearing = RectangularBearing()
     assert bearing.dx == pytest.approx(bearing.x[1] - bearing.x[0])
     assert bearing.dy == pytest.approx(bearing.y[1] - bearing.y[0])
+
+
+def test_journal_theta_grid_periodic():
+    """Journal theta grid is endpoint-free with uniform 2*pi/nx spacing."""
+    bearing = JournalBearing()
+    np.testing.assert_allclose(np.diff(bearing.theta), 2 * np.pi / bearing.nx)
+    assert bearing.dx == pytest.approx(2 * np.pi / bearing.nx)
+    assert bearing.dy == pytest.approx(bearing.y[1] - bearing.y[0])

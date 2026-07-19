@@ -175,11 +175,11 @@ class JournalBearing(BaseBearing):
     def __post_init__(self):
         super().__post_init__()
         self.psc = 0.41e6 + self.pa
-        self.theta = np.linspace(-np.pi, np.pi, self.nx)
+        self.theta = np.linspace(-np.pi, np.pi, self.nx, endpoint=False)
         self.x = self.theta
         self.y = np.linspace(-self.ya / 2, self.ya / 2, self.ny)
-        self.dx = 2 * np.pi / (self.nx + 1)
-        self.dy = self.ya / (self.ny)
+        self.dx = 2 * np.pi / self.nx
+        self.dy = self.ya / (self.ny - 1)
 
         self.ha_min = 0.01e-6
         self.ha_max = self.c / 2 - 1e-6
