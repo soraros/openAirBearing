@@ -40,8 +40,8 @@ class BaseBearing:
     psc: float = 0.6e6 + pa
 
     # clearance and eccentricity for journal bearings
-    c: float = field(init=False)
-    e: float = field(init=False)
+    c: float = field(init=False, default=None)
+    e: float = field(init=False, default=None)
     theta: np.ndarray = field(init=False, default=None)
     clearance: np.ndarray = field(init=False, default=None)
 
