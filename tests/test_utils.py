@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from openairbearing.bearings import (
+    InfiniteLinearBearing,
     BaseBearing,
     CircularBearing,
     JournalBearing,
@@ -365,3 +366,15 @@ def test_oab_mesh_quad1_circle_bell_shape_distributes_into_core():
     probe = np.isclose(x0, 0.0) & np.isclose(y0, half_side / 3.0)
     assert np.any(probe)
     assert np.max(y[probe]) > np.max(y0[probe])
+
+
+def test_psc_applies_before_kappa_computation():
+    """Subclass psc must be set before get_kappa runs, otherwise the
+    intended 0.41e6+pa calibration never lands and kappa is computed
+    with the base-class default instead."""
+    for cls in (InfiniteLinearBearing, RectangularBearing, JournalBearing):
+        b = cls()
+        assert b.psc == pytest.approx(0.41e6 + b.pa)
+        assert get_Qsc(b) == pytest.approx(b.Qsc, rel=0.01)
+        # an explicitly passed psc still wins over the class default
+        assert cls(psc=0.7e6).psc == pytest.approx(0.7e6)
