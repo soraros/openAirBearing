@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from openairbearing.bearings import (
+    InfiniteLinearBearing,
     BaseBearing,
     CircularBearing,
     JournalBearing,
@@ -392,3 +393,15 @@ def test_stiffness_requires_two_samples():
     b = CircularBearing(nh=1)
     with pytest.raises(ValueError, match="at least 2 film samples"):
         get_stiffness(b, np.array([1.0]))
+
+
+def test_psc_applies_before_kappa_computation():
+    """Subclass psc must be set before get_kappa runs, otherwise the
+    intended 0.41e6+pa calibration never lands and kappa is computed
+    with the base-class default instead."""
+    for cls in (InfiniteLinearBearing, RectangularBearing, JournalBearing):
+        b = cls()
+        assert b.psc == pytest.approx(0.41e6 + b.pa)
+        assert get_Qsc(b) == pytest.approx(b.Qsc, rel=0.01)
+        # an explicitly passed psc still wins over the class default
+        assert cls(psc=0.7e6).psc == pytest.approx(0.7e6)

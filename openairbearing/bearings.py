@@ -455,6 +455,7 @@ class InfiniteLinearBearing(BaseBearing):
     csys: str = "cartesian"
 
     ps: float = 0.41e6
+    psc: float = 0.41e6 + BaseBearing.pa
     xa: float = 40e-3
 
     Qsc: float = 37  # L/min
@@ -462,7 +463,6 @@ class InfiniteLinearBearing(BaseBearing):
 
     def __post_init__(self):
         super().__post_init__()
-        self.psc = self._coalesce(self.psc, lambda: 0.41e6 + self.pa)
         self.kappa = self._coalesce(self.kappa, lambda: get_kappa(self))
         self.beta = self._coalesce(self.beta, lambda: get_beta(self))
 
@@ -503,12 +503,12 @@ class RectangularBearing(BaseBearing):
     ny: int = 40
 
     ps: float = 0.41e6
+    psc: float = 0.41e6 + BaseBearing.pa
 
     Qsc: float = 2.94  # L/min
 
     def __post_init__(self):
         super().__post_init__()
-        self.psc = self._coalesce(self.psc, lambda: 0.41e6 + self.pa)
         self.x = np.linspace(-self.xa / 2, self.xa / 2, self.nx)
         self.y = np.linspace(-self.ya / 2, self.ya / 2, self.ny)
 
@@ -573,6 +573,7 @@ class JournalBearing(BaseBearing):
     ny: int = 20
 
     ps: float = 0.41e6
+    psc: float = 0.41e6 + BaseBearing.pa
 
     Qsc: float = 11  # L/min
     eccentricity_sweep: np.ndarray | None = None
@@ -620,7 +621,6 @@ class JournalBearing(BaseBearing):
         )
 
         super().__post_init__()
-        self.psc = self._coalesce(self.psc, lambda: 0.41e6 + self.pa)
 
         h_min_target = float(np.clip(self.ha_min, 0.0, self.clearance))
         h_max_target = float(np.clip(self.ha_max, 0.0, self.clearance))
