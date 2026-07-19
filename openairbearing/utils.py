@@ -236,7 +236,7 @@ def get_volumetric_flow(bearing, p: np.ndarray, soltype: str) -> tuple:
     Args:
         bearing: Bearing instance containing geometry and properties
         p (np.ndarray): Pressure distribution array
-        soltype (bool): Solution type (ANALYTIC or NUMERIC)
+        soltype (str): Solution type ("analytic", "numeric", or "numeric2d")
 
     Returns:
         tuple: (qs, qa, qc) where:
