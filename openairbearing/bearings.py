@@ -187,7 +187,7 @@ class JournalBearing(BaseBearing):
     ny: int = 50
     hp: float = 3e-3
 
-    c = 40e-6  # clearance (journal radius - shaft radius)
+    c = 40e-6  # diameter clearance (at e = c/2 the film pinches)
 
     ps: float = 0.41e6
 
