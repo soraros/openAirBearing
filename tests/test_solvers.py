@@ -99,3 +99,10 @@ def test_get_pressure_2d_numeric_polar_raises():
     bearing = AnnularBearing(ny=8)
     with pytest.raises(NotImplementedError, match="polar"):
         get_pressure_2d_numeric(bearing)
+
+
+def test_rectangular_grid_spacing_consistent():
+    """dx/dy match the actual node spacing of the linspace grids."""
+    bearing = RectangularBearing()
+    assert bearing.dx == pytest.approx(bearing.x[1] - bearing.x[0])
+    assert bearing.dy == pytest.approx(bearing.y[1] - bearing.y[0])

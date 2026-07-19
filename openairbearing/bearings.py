@@ -147,8 +147,8 @@ class RectangularBearing(BaseBearing):
         self.psc = 0.41e6 + self.pa
         self.x = np.linspace(-self.xa / 2, self.xa / 2, self.nx)
         self.y = np.linspace(-self.ya / 2, self.ya / 2, self.ny)
-        self.dx = self.xa / (self.nx + 1)
-        self.dy = self.ya / (self.ny + 1)
+        self.dx = self.xa / (self.nx - 1)
+        self.dy = self.ya / (self.ny - 1)
         self.geom = get_geom(self)  # calculate after x y
 
 
