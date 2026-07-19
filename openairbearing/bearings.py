@@ -105,8 +105,8 @@ class CircularBearing(BaseBearing):
     Qsc: float = 2.8  # L/min
 
     def __post_init__(self):
-        super().__post_init__()
         self.psc = 0.6e6 + self.pa
+        super().__post_init__()
 
 
 @dataclass
@@ -123,8 +123,8 @@ class AnnularBearing(BaseBearing):
     Qsc: float = 3  # L/min
 
     def __post_init__(self):
-        super().__post_init__()
         self.psc = 0.6e6 + self.pa
+        super().__post_init__()
 
 
 @dataclass
@@ -141,8 +141,8 @@ class InfiniteLinearBearing(BaseBearing):
     Qsc: float = 37  # L/min
 
     def __post_init__(self):
-        super().__post_init__()
         self.psc = 0.41e6 + self.pa
+        super().__post_init__()
 
 
 @dataclass
@@ -163,8 +163,8 @@ class RectangularBearing(BaseBearing):
     Qsc: float = 2.94  # L/min
 
     def __post_init__(self):
-        super().__post_init__()
         self.psc = 0.41e6 + self.pa
+        super().__post_init__()
         self.x = np.linspace(-self.xa / 2, self.xa / 2, self.nx)
         self.y = np.linspace(-self.ya / 2, self.ya / 2, self.ny)
         self.dx = self.xa / (self.nx - 1)
@@ -194,8 +194,8 @@ class JournalBearing(BaseBearing):
     Qsc: float = 15  # L/min
 
     def __post_init__(self):
-        super().__post_init__()
         self.psc = 0.41e6 + self.pa
+        super().__post_init__()
         self.theta = np.linspace(-np.pi, np.pi, self.nx, endpoint=False)
         self.x = self.theta
         self.y = np.linspace(-self.ya / 2, self.ya / 2, self.ny)

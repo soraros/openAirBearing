@@ -10,7 +10,7 @@ from openairbearing.utils import (
     get_load_capacity,
     get_stiffness,
 )
-from openairbearing.bearings import BaseBearing
+from openairbearing.bearings import BaseBearing, InfiniteLinearBearing
 
 
 def test_get_area():
@@ -131,3 +131,10 @@ def test_get_stiffness():
     w = 2 ** np.linspace(0, 100, nh)
     k = get_stiffness(bearing, w)
     assert np.allclose(k, -np.gradient(w, bearing.ha.flatten()))
+
+
+def test_kappa_uses_subclass_psc():
+    """get_kappa calibrates with the psc set by the subclass, so the
+    configured flow rate round-trips through get_Qsc."""
+    bearing = InfiniteLinearBearing()
+    assert get_Qsc(bearing) == pytest.approx(bearing.Qsc, rel=0.01)
