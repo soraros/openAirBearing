@@ -80,7 +80,7 @@ def plot_load_capacity(bearing, results):
                 mode="lines+markers",
                 marker=dict(
                     color=color,
-                    size=[8 if i == idx_k_max else 0 for i in range(b.nx)],
+                    size=[8 if i == idx_k_max else 0 for i in range(b.nh)],
                     symbol="circle",
                 ),
                 line=dict(color=color),
@@ -111,7 +111,7 @@ def plot_stiffness(bearing, results):
                 mode="lines+markers",
                 marker=dict(
                     color=color,
-                    size=[8 if i == idx_k_max else 0 for i in range(b.nx)],
+                    size=[8 if i == idx_k_max else 0 for i in range(b.nh)],
                     symbol="circle",
                 ),
                 line=dict(color=color),
@@ -163,7 +163,7 @@ def plot_pressure_distribution(bearing, results, slider=True):
                         textposition="top center",
                         text=[
                             f"{h_plot*1e6:.2f} μm" if i == t_loc else None
-                            for i in range(b.nx)
+                            for i in range(b.nh)
                         ],
                         textfont=dict(color=color),
                         name=f"{result.name} {h_plot*1e6:.1f} μm",
@@ -278,7 +278,7 @@ def plot_supply_flow_rate(bearing, results):
                 mode="lines+markers",
                 marker=dict(
                     color=color,
-                    size=[8 if i == idx_k_max else 0 for i in range(b.nx)],
+                    size=[8 if i == idx_k_max else 0 for i in range(b.nh)],
                     symbol="circle",
                 ),
                 line=dict(color=color),
@@ -310,7 +310,7 @@ def plot_chamber_flow_rate(bearing, results):
                 mode="lines+markers",
                 marker=dict(
                     color=color,
-                    size=[8 if i == idx_k_max else 0 for i in range(b.nx)],
+                    size=[8 if i == idx_k_max else 0 for i in range(b.nh)],
                     symbol="circle",
                 ),
                 line=dict(color=color),
@@ -344,7 +344,7 @@ def plot_ambient_flow_rate(bearing, results):
                 mode="lines+markers",
                 marker=dict(
                     color=color,
-                    size=[8 if i == idx_k_max else 0 for i in range(b.nx)],
+                    size=[8 if i == idx_k_max else 0 for i in range(b.nh)],
                     symbol="circle",
                 ),
                 line=dict(color=color),
