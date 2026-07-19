@@ -1,8 +1,7 @@
-from dash import html, dcc
+from dash import dcc, html
 
-from openairbearing.plots import plot_bearing_shape, plot_key_results, empty_figure
 from openairbearing.config import DEMO_MODE
-
+from openairbearing.plots import empty_figure, plot_bearing_shape, plot_key_results
 
 STYLES = {
     "input": {

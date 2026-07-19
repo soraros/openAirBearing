@@ -7,46 +7,45 @@ This package provides tools for analyzing and visualizing air bearing performanc
 __version__ = "0.1.8"
 
 # Import constants from config (where they're actually defined)
-from .config import DEMO_MODE
+# Import app
+from .app.app import app
 
 # Import specific bearing classes
 from .bearings import (
-    RectangularBearing,
-    CircularBearing,
     AnnularBearing,
+    CircularBearing,
     InfiniteLinearBearing,
     JournalBearing,
+    RectangularBearing,
 )
-
-# Import utility functions from where they're defined
-from .utils import (
-    get_kappa,
-    get_Qsc,
-    get_beta,
-    Result,
-    get_geom,
-    get_area,
-)
-
-# Import solver function
-from .solvers import solve_bearing, get_pressure_numeric
+from .config import DEMO_MODE
 
 # Import visualization functions
 from .plots import (
+    plot_ambient_flow_rate,
     plot_bearing_shape,
+    plot_chamber_flow_rate,
     plot_key_results,
     plot_load_capacity,
-    plot_stiffness,
     plot_pressure_distribution,
+    plot_stiffness,
     plot_supply_flow_rate,
-    plot_chamber_flow_rate,
-    plot_ambient_flow_rate,
     plot_xy_shape,
     plot_xz_shape,
 )
 
-# Import app
-from .app.app import app
+# Import solver function
+from .solvers import get_pressure_numeric, solve_bearing
+
+# Import utility functions from where they're defined
+from .utils import (
+    Result,
+    get_area,
+    get_beta,
+    get_geom,
+    get_kappa,
+    get_Qsc,
+)
 
 # Define what should be available when using 'from openairbearing import *'
 __all__ = [
@@ -80,4 +79,6 @@ __all__ = [
     "plot_supply_flow_rate",
     "plot_chamber_flow_rate",
     "plot_ambient_flow_rate",
+    "plot_xy_shape",
+    "plot_xz_shape",
 ]

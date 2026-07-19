@@ -11,7 +11,7 @@ def circular_bearing_example():
     bearing = ab.CircularBearing(
         xa=40, Qsc=5, nx=50, nh=60, error_type="quadratic", error=-2e-6
     )
-    
+
     # solve with analytic and numeric methods
     result = [
         ab.solve_bearing(bearing, "analytic"),
@@ -25,6 +25,6 @@ def circular_bearing_example():
     ab.plot_chamber_flow_rate(bearing, result).show()
     ab.plot_ambient_flow_rate(bearing, result).show()
 
+
 if __name__ == "__main__":
     circular_bearing_example()
-

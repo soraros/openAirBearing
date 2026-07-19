@@ -1,17 +1,16 @@
-from dash.dependencies import Input, Output
 import dash
+from dash.dependencies import Input, Output
 
-
-from openairbearing.plots import plot_bearing_shape, plot_key_results, empty_figure
 from openairbearing.bearings import (
-    CircularBearing,
     AnnularBearing,
+    CircularBearing,
     InfiniteLinearBearing,
-    RectangularBearing,
     JournalBearing,
+    RectangularBearing,
 )
+from openairbearing.plots import empty_figure, plot_bearing_shape, plot_key_results
 from openairbearing.solvers import solve_bearing
-from openairbearing.utils import get_kappa, get_Qsc, get_beta
+from openairbearing.utils import get_beta, get_kappa, get_Qsc
 
 
 def get_bearing(case):

@@ -1,9 +1,9 @@
-import numpy as np
-import openairbearing as ab
 import matplotlib.pyplot as plt
+import numpy as np
+
+import openairbearing as ab
 
 if __name__ == "__main__":
-
     # initialize circular bearing with parameters
     bearing = ab.AnnularBearing(
         xa=40e-3,

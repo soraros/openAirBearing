@@ -1,7 +1,7 @@
 import dash
 
-from openairbearing.app.layouts import create_layout
 from openairbearing.app.callbacks import register_callbacks
+from openairbearing.app.layouts import create_layout
 from openairbearing.bearings import CircularBearing
 from openairbearing.solvers import solve_bearing
 

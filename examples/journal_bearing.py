@@ -1,9 +1,6 @@
-import numpy as np
 import openairbearing as ab
-import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
-
     # initialize circular bearing with parameters
     bearing = ab.JournalBearing()
 

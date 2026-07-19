@@ -40,3 +40,6 @@ version = {attr = "openairbearing.__version__"}
 
 [tool.setuptools.package-data]
 openairbearing = ["assets/style.css", "assets/favicon.ico"]
+[tool.ruff]
+indent-width = 4
+line-length = 88

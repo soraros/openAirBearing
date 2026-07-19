@@ -1,9 +1,8 @@
-import numpy as np
-import openairbearing as ab
 import matplotlib.pyplot as plt
 
-if __name__ == "__main__":
+import openairbearing as ab
 
+if __name__ == "__main__":
     # initialize circular bearing with parameters
     bearing = ab.RectangularBearing(
         nx=50,

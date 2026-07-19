@@ -1,5 +1,6 @@
-import numpy as np
 from dataclasses import dataclass
+
+import numpy as np
 
 
 @dataclass
@@ -62,7 +63,6 @@ def get_geom(bearing):
 
     else:
         if b.csys == "cartesian":
-
             x = b.x[:, None]
             y = b.y[None, :]
             zeros = np.zeros((b.nx, b.ny))

@@ -1,5 +1,4 @@
 import numpy as np
-import plotly.subplots as sp
 import plotly.graph_objects as go
 from scipy.interpolate import griddata
 
@@ -135,7 +134,6 @@ def plot_pressure_distribution(bearing, results, slider=True):
         idx_k_max = np.argmax(result.k)
 
         if result.p.ndim == 2:
-
             fig.add_trace(
                 go.Scatter(
                     x=[None],
@@ -162,11 +160,11 @@ def plot_pressure_distribution(bearing, results, slider=True):
                         mode="lines+text",
                         textposition="top center",
                         text=[
-                            f"{h_plot*1e6:.2f} μm" if i == t_loc else None
+                            f"{h_plot * 1e6:.2f} μm" if i == t_loc else None
                             for i in range(b.nh)
                         ],
                         textfont=dict(color=color),
-                        name=f"{result.name} {h_plot*1e6:.1f} μm",
+                        name=f"{result.name} {h_plot * 1e6:.1f} μm",
                         line=dict(color=color),
                         showlegend=False,
                     ),
@@ -395,7 +393,6 @@ def plot_xy_shape(bearing):
     # SHAPE XY
     match b.case:
         case "annular" | "circular":
-
             # outer circle
             theta = np.linspace(0, 2 * np.pi, 100)
             xa = b.xa * np.cos(theta) * 1e3

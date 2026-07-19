@@ -1,8 +1,9 @@
 import pytest
+
 from openairbearing.app.callbacks import get_bearing
 from openairbearing.bearings import (
-    CircularBearing,
     AnnularBearing,
+    CircularBearing,
     InfiniteLinearBearing,
     RectangularBearing,
 )

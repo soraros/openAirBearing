@@ -1,16 +1,16 @@
-import pytest
 import numpy as np
+import pytest
+
+from openairbearing.bearings import BaseBearing, InfiniteLinearBearing
 from openairbearing.utils import (
     get_area,
-    get_geom,
     get_beta,
+    get_dA,
+    get_geom,
     get_kappa,
     get_Qsc,
-    get_dA,
-    get_load_capacity,
     get_stiffness,
 )
-from openairbearing.bearings import BaseBearing, InfiniteLinearBearing
 
 
 def test_get_area():

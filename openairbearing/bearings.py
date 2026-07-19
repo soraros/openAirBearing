@@ -1,7 +1,8 @@
-import numpy as np
 from dataclasses import dataclass, field
 
-from openairbearing.utils import get_area, get_geom, get_kappa, get_beta
+import numpy as np
+
+from openairbearing.utils import get_area, get_beta, get_geom, get_kappa
 
 
 @dataclass
