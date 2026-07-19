@@ -3,17 +3,20 @@
 Externally pressurized air bearing analysis library (porous-media restrictors).
 Two generations of the package coexist:
 
-- **v1** (`openairbearing/*.py`, `openairbearing/app/`) — legacy mutable-dataclass
-  design plus the Dash web app. Kept working, do not extend; fixes only.
-- **v2** (`openairbearing/v2/`) — the data-oriented rewrite. All new work goes here.
+- **v1** (`openairbearing/*.py`, `openairbearing/app/`) — upstream's current
+  FEM-based implementation (skfem; `bearings.py`, `solution_analytic.py`,
+  `solution_fem.py`, `fem_utils.py`, `mesh.py`). Fixes only, do not extend.
+- **v2** (`openairbearing/v2/`) — our data-oriented rewrite. All new work goes here.
 
 ## Branches
 
-- `v2` — main line: v1 lib + v2. No panel code.
-- `gui` — Panel web UI (`openairbearing/panel/`, panel entry point, VS Code tasks).
-  Branched off before the v2 work; v1-only. Panel deps exist only there.
-- `backup/dev-2026-07-18` — pre-restructure snapshot (dev incl. panel commit). Safe to
-  delete once the split is confirmed good.
+- `v2` — main line: upstream main (0.2.x, FEM rewrite) + the v2 package.
+  No panel code.
+- `gui` — Panel web UI (`openairbearing/panel/`). Frozen at 0.1.x; left as-is.
+- `fix/v1-bugs` — v1 (0.1.x) bug-fix series for the upstream PR. Frozen:
+  upstream's rewrite removed the code those fixes target, so they apply to
+  the 0.1.x line only.
+- `backup/dev-2026-07-18` — pre-restructure snapshot. Safe to delete.
 - `main` — tracks upstream (Aalto-Arotor/openAirBearing).
 
 ## Tooling (uv, Python ≥3.13)
@@ -29,6 +32,11 @@ uv run ruff format           # format; v2 scope must stay clean
   (`[tool.uv] default-groups = ["dev"]`). `uv.lock` is gitignored.
 - **numba is pinned `>=0.62.1,<0.63.0`** (Intel macOS / llvmlite compat) and
   **numpy `<2.4`** (numba 0.62.x compat). Do not bump these without checking numba.
+- **jax is deliberately not a dependency**: nothing imports it directly, and
+  jax 0.6.2+ ships no Intel macOS wheels. `skfem.autodiff.NonlinearForm`
+  (which needs jax) is imported lazily in `solution_fem.py` so the package
+  imports everywhere; jax-dependent FEM tests are `importorskip`-guarded
+  (they skip on Intel macs).
 - Build backend: hatchling. Package ships `py.typed`.
 
 ## v2 architecture (absim_fvm style)
@@ -56,27 +64,29 @@ Conventions:
 
 ## Testing
 
-- `tests/` — v1 suite (pinned v1 regression values) + `tests/v2/` (v2 suite:
-  pinned values, BC/physics checks, analytic↔numeric cross-validation,
-  v1↔v2 cross-checks in `test_cross_v1.py`, headless example runs).
-- 262 tests must stay green. Pinned v2 values use rtol 1e-8/1e-6 — regenerate
-  only deliberately.
+- `tests/` — upstream's suite (FEM-based; jax-gated tests skip on Intel macs)
+  + `tests/v2/` (v2 suite: pinned values, BC/physics checks, analytic↔numeric
+  cross-validation, headless example runs).
+- Pinned v2 values use rtol 1e-8/1e-6 — regenerate only deliberately.
 - Examples in `examples/v2/` expose `build_figures()` for headless testing;
   `.show()` only under `main()`.
+- The old `tests/v2/test_cross_v1.py` is retired: upstream's rewrite removed
+  the 0.1.x v1 API it compared against.
 
-## v1 quirks that v2 deliberately handles differently (don't "fix" tests over these)
+## v1 (0.1.x) quirks that shaped v2's catalog (historical, pre-rewrite)
 
-- v1 computes κ for linear/rect/journal with the base-class `psc=0.6e6+pa`
-  (post-init ordering bug); v2's catalog reproduces v1 outputs by making the
-  calibration pressure explicit data. 1-D v1↔v2 agreement is ~5e-4 (v1 rounds κ
-  to 3 significant digits).
-- v1's rect 2-D grid spacing (`dx=lx/(nx+1)`) is inconsistent with its nodes and
-  its dA under-integrates the area; v2 uses consistent spacings and trapezoidal
-  weights (ΣdA = area exactly), so 2-D absolute values differ from v1.
-- v1's 2-D polar path is broken (no-op `factors` line); v2 implements it properly.
-- Journal: v1's endpoint-inclusive θ grid causes artifacts; v2 uses an
-  endpoint-free periodic grid.
+- The 0.1.x v1 computed κ for linear/rect/journal with the base-class
+  `psc=0.6e6+pa` (init ordering bug); v2's catalog reproduces those outputs by
+  making the calibration pressure explicit data. 0.1.x also rounded κ to 3
+  significant digits; v2 does not.
+- 0.1.x rect 2-D used grid spacings inconsistent with its nodes; v2 uses
+  consistent spacings and trapezoidal weights (ΣdA = area exactly).
+- 0.1.x 2-D polar was broken and journal's θ grid endpoint-inclusive; v2
+  implements both properly.
 - Flow sign convention: `qc` carries its own sign; `qs = qa - qc` is total outflow.
+- Upstream's rewrite still contains some of these bugs in new clothes
+  (e.g. rect `dx=xa/(nx+1)` in `bearings.py`, `blocked` without
+  `block_in`/`block_A`) — follow-up PR material; check current code first.
 
 ## Housekeeping
 
@@ -109,4 +119,5 @@ give them default=None like theta/clearance.
 
 Keep commits small and single-goal; fixups belong squashed into their
 parent, never as standalone commits.
+
 

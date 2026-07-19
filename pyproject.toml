@@ -85,9 +85,9 @@ ignore = [
 # Legacy v1 modules predate the strict absim_fvm-style ruleset that
 # openairbearing/v2 (and tests/v2, examples/v2) follows. New code must not
 # add paths here.
-"openairbearing/__init__.py" = ["F401", "RUF022"]
-"openairbearing/*.py" = ["B", "C4", "I", "NPY", "PLR", "RUF", "UP"]
-"openairbearing/app/**" = ["B", "BLE", "C4", "I", "NPY", "PLC", "PLE", "PLR", "PLW", "RUF", "UP"]
+"openairbearing/__init__.py" = ["F401", "F822", "RUF022"]
+"openairbearing/*.py" = ["B", "C4", "I", "NPY", "PERF", "PLR", "RUF", "UP"]
+"openairbearing/app/**" = ["B", "BLE", "C4", "DTZ", "I", "NPY", "PLC", "PLE", "PLR", "PLW", "RUF", "UP"]
 "tests/*.py" = ["B", "C4", "F401", "F403", "F405", "I", "NPY", "RUF", "UP"]
 "examples/*.py" = ["B", "C4", "I", "NPY", "RUF", "UP"]
 
