@@ -76,6 +76,7 @@ def test_plot_key_results_rectangular_with_numeric_2d():
 
 
 def test_plot_key_results_rectangular_with_numeric_2d_full():
+    pytest.importorskip("jax", reason="jax has no wheels for Intel macOS")
     bearing = RectangularBearing(nx=12, ny=8, nh=6, u=[8.0, 0.0])
     result = solve_bearing_fem_2d_nonlinear(
         bearing,

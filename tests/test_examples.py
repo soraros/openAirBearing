@@ -50,6 +50,8 @@ def _entrypoint(module):
     ],
 )
 def test_examples_run(example_name, monkeypatch):
+    if "ex03" in example_name:
+        pytest.importorskip("jax", reason="jax has no wheels for Intel macOS")
     example_path = EXAMPLES_DIR / example_name
     module = _load_module(example_path)
     run = _entrypoint(module)

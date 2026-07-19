@@ -19,7 +19,6 @@ classifiers = [
 ]
 dependencies = [
     "dash>=2.18.2,<3.0.0",
-    "jax>=0.6.2",
     "matplotlib>=3.8.0,<4.0.0",
     # numba 0.62.x supports numpy <2.4; keep numpy in the compatible window
     "numpy>=2.3.5,<2.4",
