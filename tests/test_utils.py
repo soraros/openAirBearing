@@ -392,3 +392,9 @@ def test_tilt_profiles_span_full_amplitude(error_type):
     )
     assert geom.min() == pytest.approx(0.0)
     assert geom.max() == pytest.approx(2e-6, rel=1e-6)
+
+
+def test_blocked_raises_clear_error():
+    """blocked=True must fail with a clear error, not AttributeError."""
+    with pytest.raises(NotImplementedError, match="blocked restrictors"):
+        CircularBearing(blocked=True)

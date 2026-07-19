@@ -264,6 +264,11 @@ class BaseBearing:
         self.fem_2d.D = self.fem_2d.boundary_sets["all"]
 
     def __post_init__(self):
+        if self.blocked:
+            raise NotImplementedError(
+                "blocked restrictors are not implemented: there is no spatial "
+                "permeability mask in the current solvers"
+            )
         if self.fem_2d.mesh is None and self.mesh is not None:
             self.fem_2d.mesh = self.mesh
         if self.mesh is None and self.fem_2d.mesh is not None:
