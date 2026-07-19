@@ -9,7 +9,7 @@ Two generations of the package coexist:
 
 ## Branches
 
-- `dev` — main line: v1 lib + v2. No panel code.
+- `v2` — main line: v1 lib + v2. No panel code.
 - `gui` — Panel web UI (`openairbearing/panel/`, panel entry point, VS Code tasks).
   Branched off before the v2 work; v1-only. Panel deps exist only there.
 - `backup/dev-2026-07-18` — pre-restructure snapshot (dev incl. panel commit). Safe to
