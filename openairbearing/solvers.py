@@ -238,6 +238,11 @@ def get_pressure_2d_numeric(bearing):
         np.ndarray: 2D pressure distribution array.
     """
     b = bearing
+    if b.csys == "polar":
+        raise NotImplementedError(
+            "the 2D numeric solver does not implement the polar metric; "
+            "use 'analytic' or 'numeric' (1D) for circular and annular bearings"
+        )
     N = b.nx
     M = b.ny
 
@@ -281,32 +286,6 @@ def get_pressure_2d_numeric(bearing):
                 "south": b.pa,
             }
             factors = [1, 1]
-        elif b.case == "circular":
-            bc = {
-                "west": "Neumann",
-                "east": "Dirichlet",
-                "north": "Periodic",
-                "south": "Periodic",
-            }
-            bc_vals = {
-                "west": b.pa,
-                "east": b.pa,
-                "north": b.pa,
-                "south": b.pa,
-            }
-            factors[b.x, b.x**2]
-        elif b.case == "annular":
-            bc = {
-                "west": "Dirichlet",
-                "east": "Dirichlet",
-                "north": "Periodic",
-                "south": "Periodic",
-            }
-            bc_vals = {
-                "west": b.pa,
-                "east": b.pc,
-            }
-            factors[b.x, b.x**2]
         elif b.case == "journal":
             bc = {
                 "west": "Dirichlet",

@@ -92,3 +92,10 @@ def test_solve_bearing():
         assert np.allclose(results[0].w, results[1].w, rtol=e)
         assert np.allclose(results[0].k, results[1].k, rtol=e)
         assert np.allclose(results[0].qs, results[1].qs, rtol=e)
+
+
+def test_get_pressure_2d_numeric_polar_raises():
+    """Polar 2D numeric raises a clear error instead of crashing on `factors`."""
+    bearing = AnnularBearing(ny=8)
+    with pytest.raises(NotImplementedError, match="polar"):
+        get_pressure_2d_numeric(bearing)
