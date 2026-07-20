@@ -398,3 +398,10 @@ def test_blocked_raises_clear_error():
     """blocked=True must fail with a clear error, not AttributeError."""
     with pytest.raises(NotImplementedError, match="blocked restrictors"):
         CircularBearing(blocked=True)
+
+
+def test_stiffness_requires_two_samples():
+    """nh=1 must fail with a clear error, not a numpy gradient ValueError."""
+    b = CircularBearing(nh=1)
+    with pytest.raises(ValueError, match="at least 2 film samples"):
+        get_stiffness(b, np.array([1.0]))
