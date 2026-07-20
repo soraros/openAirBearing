@@ -109,9 +109,9 @@ def get_geom_2d(bearing, *, x, y):
                 case "saddle":
                     return err * 0.5 * (1.0 - (x / xa) ** 2 + (y / ya) ** 2)
                 case "tiltx":
-                    return err * 0.5 * (x / xa)
+                    return err * (x / xa)
                 case "tilty":
-                    return err * 0.5 * (y / ya)
+                    return err * (y / ya)
                 case _:
                     raise ValueError(f"Unknown error type: {b.error_type}")
 
@@ -128,9 +128,9 @@ def get_geom_2d(bearing, *, x, y):
                 case "saddle":
                     return err * 0.5 * (1.0 - (x / xa) ** 2 + (y / ya) ** 2)
                 case "tiltx":
-                    return err * 0.5 * (x / xa)
+                    return err * (x / xa)
                 case "tilty":
-                    return err * 0.5 * (y / ya)
+                    return err * (y / ya)
                 case _:
                     raise ValueError(f"Unknown error type: {b.error_type}")
         else:

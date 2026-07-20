@@ -365,3 +365,17 @@ def test_oab_mesh_quad1_circle_bell_shape_distributes_into_core():
     probe = np.isclose(x0, 0.0) & np.isclose(y0, half_side / 3.0)
     assert np.any(probe)
     assert np.max(y[probe]) > np.max(y0[probe])
+
+
+@pytest.mark.parametrize("error_type", ["tiltx", "tilty"])
+def test_tilt_profiles_span_full_amplitude(error_type):
+    """Tilt profiles must span [0, error] after min-shift, like the other
+    error profiles (linear/quadratic/saddle), not half of it."""
+    b = RectangularBearing(error_type=error_type, error=2e-6)
+    geom = get_geom_2d(
+        b,
+        x=b.fem_2d.basis.doflocs[0],
+        y=b.fem_2d.basis.doflocs[1],
+    )
+    assert geom.min() == pytest.approx(0.0)
+    assert geom.max() == pytest.approx(2e-6, rel=1e-6)
