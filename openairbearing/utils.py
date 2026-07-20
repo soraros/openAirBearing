@@ -280,6 +280,8 @@ def get_stiffness(bearing, w: np.ndarray) -> np.ndarray:
         np.ndarray: Stiffness curve computed as -dW/dh (N/µm).
     """
     b = bearing
+    if np.asarray(w).size < 2:
+        raise ValueError("stiffness requires at least 2 film samples, got nh=1")
     k = -np.gradient(w) / np.gradient(b.h) * 1e-6  # N per µm
     return k
 
