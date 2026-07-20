@@ -133,6 +133,9 @@ def solve_bearing_fem_1d(b):
 
         eta = solve(*condense(system_matrix, x=eta_dirichlet, D=D))
         p_dofs = np.sqrt(b.ps**2 - eta)
+        # clamp to the hydrostatic envelope pa <= p <= ps: the P2 FEM can
+        # overshoot it locally on coarse grids (no discrete max principle)
+        p_dofs = np.clip(p_dofs, b.pa, b.ps)
 
         load_value, qa, qc, qs = _evaluate_1d_result_terms(
             b=b,
@@ -223,6 +226,8 @@ def _solve_stationary_pressure_dofs_2d(b, h_func, eta_dirichlet, boundary_dofs):
     system_matrix = _assemble_eta_matrix_2d(b, h_func)
     eta = solve(*condense(system_matrix, x=eta_dirichlet, D=boundary_dofs))
     p_dofs = np.sqrt(np.maximum(b.ps**2 - eta, 0.0))
+    # clamp to the hydrostatic envelope pa <= p <= ps (P2 overshoot guard)
+    p_dofs = np.clip(p_dofs, b.pa, b.ps)
     return p_dofs, system_matrix
 
 
