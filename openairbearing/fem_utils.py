@@ -122,8 +122,10 @@ def load_form_circular_axial():
 
 
 def supply_flow_form_1d(b):
-    """Return supply-flow form for 1D radial FEM model."""
-    return _make_supply_flow_form(b, _area_weight_circular)
+    """Return supply-flow form for 1D FEM model, weighted per coordinate system."""
+    return _make_supply_flow_form(
+        b, _area_weight_circular if b.csys == "polar" else _unit_weight
+    )
 
 
 def boundary_flow_form_circular_rim(*, mu: float, p_ref: float, h):

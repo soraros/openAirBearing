@@ -284,3 +284,21 @@ def test_analytic_and_fem_1d_loads_are_close(bearing_cls):
         np.abs(analytic.w - numeric_1d.w) / np.maximum(np.abs(analytic.w), 1e-9)
     )
     assert relative_error < 0.05
+
+
+@pytest.mark.parametrize(
+    "bearing_cls",
+    [CircularBearing, AnnularBearing, InfiniteLinearBearing],
+)
+def test_analytic_and_fem_1d_supply_flows_are_close(bearing_cls):
+    """Supply flow from the 1D FEM agrees with the analytic source integral
+    on a resolved grid. Guards the supply-form area weight: cartesian pads
+    must use unit weight, not the polar 2*pi*r jacobian."""
+    bearing = bearing_cls(nx=100)
+    analytic = solve_bearing_analytic(bearing)
+    numeric_1d = solve_bearing_fem_1d(bearing)
+
+    relative_error = np.mean(
+        np.abs(analytic.qs - numeric_1d.qs) / np.maximum(np.abs(analytic.qs), 1e-9)
+    )
+    assert relative_error < 0.05
