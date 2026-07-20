@@ -302,3 +302,57 @@ def test_analytic_and_fem_1d_supply_flows_are_close(bearing_cls):
         np.abs(analytic.qs - numeric_1d.qs) / np.maximum(np.abs(analytic.qs), 1e-9)
     )
     assert relative_error < 0.05
+
+
+def test_journal_zero_eccentricity_is_theta_symmetric():
+    """At zero eccentricity the journal film is uniform, so the pressure
+    must be constant along the circumference at any axial station."""
+    bearing = JournalBearing(
+        nx=24, ny=12, nh=2, eccentricity=0.0, eccentricity_sweep=np.zeros(2)
+    )
+    result = solve_bearing_fem_2d(bearing)
+    basis = bearing.fem_2d.basis
+    x_dofs = basis.doflocs[0]
+    p = result.p_2d[0]
+    col = np.isclose(x_dofs, bearing.x[bearing.nx // 2])
+    assert p[col].max() - p[col].min() < 1.0  # Pa
+
+
+def test_fem_2d_rectangular_dirichlet_edges_hold_ambient():
+    """All rectangular edges sit at ambient pressure."""
+    bearing = RectangularBearing(nx=12, ny=8, nh=2)
+    solve_bearing_fem_2d(bearing)
+    basis = bearing.fem_2d.basis
+    x_dofs, y_dofs = basis.doflocs[0], basis.doflocs[1]
+    p = np.sqrt(np.maximum(bearing.ps**2 - bearing.fem_2d.eta, 0.0))
+    edge = (
+        np.isclose(x_dofs, bearing.x[0])
+        | np.isclose(x_dofs, bearing.x[-1])
+        | np.isclose(y_dofs, bearing.y[0])
+        | np.isclose(y_dofs, bearing.y[-1])
+    )
+    np.testing.assert_allclose(p[edge], bearing.pa)
+
+
+@pytest.mark.parametrize(
+    "bearing_cls",
+    [CircularBearing, AnnularBearing, InfiniteLinearBearing],
+)
+def test_pressure_stays_within_supply_and_ambient(bearing_cls):
+    """Physical envelope: pa <= p <= ps for analytic and fem 1d results."""
+    b = bearing_cls()
+    p_analytic = solve_bearing_analytic(b).p
+    tol = 1.0
+    assert np.all(p_analytic >= b.pa - tol)
+    assert np.all(p_analytic <= b.ps + tol)
+    for snapshot in solve_bearing_fem_1d(b).p_1d:
+        assert np.all(snapshot >= b.pa - tol)
+        assert np.all(snapshot <= b.ps + tol)
+
+
+@pytest.mark.parametrize("bearing_cls", [CircularBearing, AnnularBearing])
+def test_supply_flow_matches_edge_outflow(bearing_cls):
+    """Steady state: porous inflow equals edge outflow on a resolved grid."""
+    b = bearing_cls(nx=200)
+    analytic = solve_bearing_analytic(b)
+    np.testing.assert_allclose(analytic.qs, analytic.qa - analytic.qc, rtol=0.15)
