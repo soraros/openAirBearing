@@ -378,3 +378,17 @@ def test_psc_applies_before_kappa_computation():
         assert get_Qsc(b) == pytest.approx(b.Qsc, rel=0.01)
         # an explicitly passed psc still wins over the class default
         assert cls(psc=0.7e6).psc == pytest.approx(0.7e6)
+
+
+@pytest.mark.parametrize("error_type", ["tiltx", "tilty"])
+def test_tilt_profiles_span_full_amplitude(error_type):
+    """Tilt profiles must span [0, error] after min-shift, like the other
+    error profiles (linear/quadratic/saddle), not half of it."""
+    b = RectangularBearing(error_type=error_type, error=2e-6)
+    geom = get_geom_2d(
+        b,
+        x=b.fem_2d.basis.doflocs[0],
+        y=b.fem_2d.basis.doflocs[1],
+    )
+    assert geom.min() == pytest.approx(0.0)
+    assert geom.max() == pytest.approx(2e-6, rel=1e-6)
